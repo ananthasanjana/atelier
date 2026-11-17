@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Atelier – New Password</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="site-header">
+    <a href="index.html" class="logo">
+      <span class="logo-name">Atelier</span>
+      <span class="logo-tag">one cloth many paths</span>
+    </a>
+    <nav class="nav">
+      <a href="index.html">home</a>
+      <a href="login.html" class="auth-pill" id="authBtn">login</a>
+    </nav>
+  </header>
+
+  <main class="page">
+    <section class="card">
+      <h1 class="card-title">NEW PASSWORD</h1>
+      <form id="resetForm" novalidate>
+        <label class="field">
+          <span>New Password</span>
+          <input id="password" type="password" autocomplete="new-password" minlength="6" required>
+        </label>
+        <label class="field">
+          <span>Repeat New Password</span>
+          <input id="password2" type="password" autocomplete="new-password" required>
+        </label>
+        <button type="submit" class="btn-small" id="saveBtn">Save</button>
+      </form>
+      <p class="msg" id="msg" role="status"></p>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+  <script src="supabase.js"></script>
+  <script>
+    document.getElementById('resetForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      await atelierReady;
+      if (!db) return showMessage('Add your Supabase URL and key in supabase.js first.');
+
+      const password = document.getElementById('password').value;
+      if (password.length < 6) return showMessage('Password must be at least 6 characters.');
+      if (password !== document.getElementById('password2').value) return showMessage("Passwords don't match.");
+
+      const { data: { session } } = await db.auth.getSession();
+      if (!session) return showMessage('This reset link has expired. Request a new one from the login page.');
+
+      const { error } = await db.auth.updateUser({ password });
+      if (error) return showMessage(error.message);
+
+      showMessage('Password updated! Taking you home…', 'ok');
+      setTimeout(() => { window.location.href = pageUrl('index.html'); }, 1200);
+    });
+  </script>
+</body>
+</html>

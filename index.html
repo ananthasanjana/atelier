@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Atelier</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="site-header">
+    <a href="index.html" class="logo">
+      <span class="logo-name">Atelier</span>
+      <span class="logo-tag">one cloth many paths</span>
+    </a>
+    <nav class="nav">
+      <a href="index.html">home</a>
+      <a href="#">my closet</a>
+      <a href="#">tailors</a>
+      <a href="#">marketplace</a>
+      <a href="#">community</a>
+      <a href="#">events</a>
+      <a href="login.html" class="auth-pill" id="authBtn">login</a>
+    </nav>
+  </header>
+
+  <main class="page">
+    <section class="card home-text" id="home">
+      <h1 class="card-title">WELCOME</h1>
+      <p>Loading…</p>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+  <script src="supabase.js"></script>
+  <script>
+    // Temporary home page: shows who is logged in so you can test auth.
+    (async () => {
+      const home = document.getElementById('home');
+      const profile = await getCurrentProfile();
+
+      if (!profile) {
+        home.innerHTML = `
+          <h1 class="card-title">WELCOME</h1>
+          <p>You're not logged in.</p>
+          <p class="switch"><a href="login.html">Login</a> or <a href="signup.html">Sign Up</a></p>`;
+        return;
+      }
+
+      const title = document.createElement('h1');
+      title.className = 'card-title';
+      title.textContent = 'hi, ' + (profile.display_name || 'friend');
+
+      const handle = document.createElement('p');
+      handle.textContent = '@' + profile.username;
+
+      const bio = document.createElement('p');
+      bio.textContent = profile.bio || '';
+
+      const chip = document.createElement('span');
+      chip.className = 'role-chip';
+      chip.textContent = ROLE_LABELS[profile.role] || profile.role;
+
+      home.replaceChildren(title, handle, bio, chip);
+    })();
+  </script>
+</body>
+</html>
