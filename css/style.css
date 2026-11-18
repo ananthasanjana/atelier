@@ -1370,6 +1370,8 @@ button {
 .profile-cover__edit {
   position: absolute;
   z-index: 2;
+  display: inline-flex;
+  align-items: center;
   right: max(24px, calc((100% - 1120px) / 2 + 32px));
   bottom: 14px;
   padding: 7px 16px;
@@ -1380,6 +1382,11 @@ button {
   font-size: 13px;
   cursor: pointer;
   backdrop-filter: blur(6px);
+}
+
+#banner-file-input:focus-visible + .profile-cover__edit {
+  outline: 2px solid #3e3c22;
+  outline-offset: 3px;
 }
 
 .profile-upper {

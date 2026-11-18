@@ -229,9 +229,6 @@ document.addEventListener('DOMContentLoaded', () => {
     showProfileToast('Profile updated.');
   });
 
-  document.getElementById('edit-banner-button').addEventListener('click', () => {
-    document.getElementById('banner-file-input').click();
-  });
   document.getElementById('edit-avatar-button').addEventListener('click', () => {
     document.getElementById('avatar-file-input').click();
   });
