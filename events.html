@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#6B6638">
+    <title>Events Calendar | Atelier</title>
+    <link rel="stylesheet" href="css/style.css">
+  </head>
+  <body class="bg-graph-paper events-page">
+    <header class="atelier-navbar">
+      <a class="atelier-brand" href="index.html" aria-label="Atelier home">
+        <span class="atelier-brand__name">Atelier</span>
+        <span class="atelier-brand__tagline">one cloth many paths</span>
+      </a>
+      <nav class="atelier-nav-links" aria-label="Main navigation">
+        <a href="index.html">home</a>
+        <a href="my-closet.html">my closet</a>
+        <a href="tailors.html">tailors</a>
+        <a href="marketplace.html">marketplace</a>
+        <a href="community.html">community</a>
+        <a href="events.html" aria-current="page">events</a>
+      </nav>
+      <a class="atelier-login" href="login.html" id="nav-login-btn">login</a>
+      <a class="atelier-profile-link" href="profile.html" id="nav-profile-btn" style="display: none;">
+        <span class="atelier-avatar" aria-hidden="true">
+          <svg viewBox="0 0 36 36">
+            <circle cx="18" cy="12" r="5"></circle>
+            <path d="M8 29c0-6 4-9 10-9s10 3 10 9"></path>
+          </svg>
+        </span>
+        <span>Profile</span>
+      </a>
+    </header>
+
+    <main class="events-layout">
+      <div class="events-program-layout">
+        <aside class="events-sidebar events-sidebar--left" aria-labelledby="events-calendar-title">
+          <div class="events-sidebar__content">
+            <section class="events-calendar">
+              <p class="events-eyebrow">MAKE, MEND, MEET</p>
+              <h1 id="events-calendar-title">Calendar</h1>
+              <div class="events-calendar__month">
+                <button type="button" id="calendar-prev" aria-label="Previous month">‹</button>
+                <h2 id="calendar-month">November 2026</h2>
+                <button type="button" id="calendar-next" aria-label="Next month">›</button>
+              </div>
+              <div class="events-calendar__weekdays" aria-hidden="true">
+                <span>Mon</span>
+                <span>Tue</span>
+                <span>Wed</span>
+                <span>Thu</span>
+                <span>Fri</span>
+                <span>Sat</span>
+                <span>Sun</span>
+              </div>
+              <div class="events-calendar__days" id="calendar-days" role="group" aria-label="Calendar dates"></div>
+              <p class="events-calendar__feedback" id="calendar-feedback" role="status" aria-live="polite">
+                Choose a date to find what's happening.
+              </p>
+            </section>
+
+            <fieldset class="events-filters">
+              <legend>Explore by type</legend>
+              <label>
+                <input type="radio" name="event-category" value="all" checked>
+                <span>All</span>
+              </label>
+              <label>
+                <input type="radio" name="event-category" value="swap-thrift">
+                <span>Swap &amp; Thrift</span>
+              </label>
+              <label>
+                <input type="radio" name="event-category" value="workshop">
+                <span>Workshop</span>
+              </label>
+              <label>
+                <input type="radio" name="event-category" value="donation-drive">
+                <span>Donation Drive</span>
+              </label>
+            </fieldset>
+
+            <div class="events-host">
+              <button class="events-host__button" id="open-host-dialog" type="button">+ Host / Submit Event</button>
+              <p>Have an idea for a local swap or workshop? Send it our way.</p>
+            </div>
+          </div>
+        </aside>
+
+        <section class="events-programs" aria-labelledby="events-programs-title">
+          <header class="events-section-heading">
+            <p class="events-eyebrow">GATHER AROUND GOOD IDEAS</p>
+            <h2 id="events-programs-title">Programs</h2>
+          </header>
+          <div class="events-feed" id="programs-feed" aria-live="polite">
+            <p class="events-empty">Loading Atelier programs…</p>
+          </div>
+        </section>
+      </div>
+
+      <aside class="events-sidebar events-sidebar--right" aria-labelledby="events-drives-title">
+        <header class="events-section-heading">
+          <p class="events-eyebrow">KEEP THE CYCLE GOING</p>
+          <h2 id="events-drives-title">Ongoing Drives</h2>
+        </header>
+        <div class="events-drive-list" id="ongoing-drives">
+          <p class="events-empty">Loading community drives…</p>
+        </div>
+      </aside>
+    </main>
+
+    <p class="events-status" id="events-status" role="status" aria-live="polite" hidden></p>
+
+    <dialog class="events-dialog" id="event-dialog" aria-labelledby="event-dialog-title">
+      <div class="events-dialog__panel">
+        <button class="events-dialog__close" type="button" data-close-event aria-label="Close event details">×</button>
+        <div class="events-dialog__poster-frame">
+          <img id="event-dialog-image" src="" alt="">
+        </div>
+        <div class="events-dialog__copy">
+          <p class="events-eyebrow" id="event-dialog-date"></p>
+          <p class="events-category" id="event-dialog-category"></p>
+          <h2 id="event-dialog-title"></h2>
+          <p class="events-dialog__venue" id="event-dialog-venue"></p>
+          <p id="event-dialog-details"></p>
+          <div class="events-dialog__contact">
+            <strong id="event-dialog-organizer"></strong>
+            <span id="event-dialog-contact"></span>
+          </div>
+          <p class="events-dialog__message" id="event-rsvp-message" role="status" aria-live="polite" hidden></p>
+          <div class="events-dialog__actions">
+            <button class="events-rsvp-button" id="event-rsvp-button" type="button">RSVP / Save Spot</button>
+            <button class="events-cancel-button" id="event-unrsvp-button" type="button" hidden>Cancel RSVP</button>
+          </div>
+        </div>
+      </div>
+    </dialog>
+
+    <dialog class="events-dialog events-dialog--submit" id="host-dialog" aria-labelledby="host-dialog-title">
+      <form class="events-submit-form" id="host-form">
+        <button class="events-dialog__close" type="button" data-close-host aria-label="Close event submission">×</button>
+        <p class="events-eyebrow">MAKE ROOM FOR MORE</p>
+        <h2 id="host-dialog-title">Host / Submit an Event</h2>
+        <p class="events-submit-form__intro">Tell the Atelier community about a swap, repair session, or creative workshop.</p>
+        <label for="host-event-title">Event title</label>
+        <input id="host-event-title" name="title" type="text" maxlength="120" required>
+        <label for="host-event-category">Category</label>
+        <select id="host-event-category" name="category" required>
+          <option value="">Choose a category</option>
+          <option>Swap &amp; Thrift</option>
+          <option>Workshop</option>
+          <option>Donation Drive</option>
+        </select>
+        <label for="host-event-date">Date <span>(optional)</span></label>
+        <input id="host-event-date" name="date" type="date">
+        <label for="host-event-details">A few details</label>
+        <textarea id="host-event-details" name="details" rows="4" maxlength="800" required></textarea>
+        <label for="host-event-contact">Your contact <span>(optional)</span></label>
+        <input id="host-event-contact" name="contact" type="text" maxlength="120">
+        <p class="events-dialog__message" id="host-message" role="status" aria-live="polite" hidden></p>
+        <button class="events-rsvp-button" type="submit">Send Event Proposal</button>
+      </form>
+    </dialog>
+
+    <script src="js/nav-auth.js"></script>
+    <script src="js/events.js"></script>
+  </body>
+</html>
