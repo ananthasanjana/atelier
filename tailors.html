@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#65613f">
+    <title>Find a Tailor | Atelier</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+      crossorigin=""
+    >
+  </head>
+  <body class="bg-graph-paper tailors-page">
+    <header class="atelier-navbar">
+      <a class="atelier-brand" href="index.html" aria-label="Atelier home">
+        <span class="atelier-brand__name">Atelier</span>
+        <span class="atelier-brand__tagline">one cloth many paths</span>
+      </a>
+      <nav class="atelier-nav-links" aria-label="Main navigation">
+        <a href="index.html">home</a>
+        <a href="my-closet.html">my closet</a>
+        <a href="tailors.html" aria-current="page">tailors</a>
+        <a href="marketplace.html">marketplace</a>
+        <a href="community.html">community</a>
+        <a href="events.html">events</a>
+      </nav>
+      <a class="atelier-login" href="login.html" id="nav-login-btn">login</a>
+      <a class="atelier-profile-link" href="profile.html" id="nav-profile-btn" style="display: none;">
+        <span class="atelier-avatar" aria-hidden="true">
+          <svg viewBox="0 0 36 36">
+            <circle cx="18" cy="12" r="5"></circle>
+            <path d="M8 29c0-6 4-9 10-9s10 3 10 9"></path>
+          </svg>
+        </span>
+        <span>Profile</span>
+      </a>
+    </header>
+
+    <main class="tailors-workspace">
+      <section class="tailors-map-pane" aria-label="Map of tailor shops">
+        <div class="tailors-map-filters" aria-label="Filter tailor shops">
+          <label class="tailors-filter">
+            <span class="visually-hidden">Neighborhood</span>
+            <select id="area-filter">
+              <option value="all">All Areas</option>
+              <option>Jubilee Hills</option>
+              <option>Banjara Hills</option>
+              <option>Madhapur</option>
+              <option>Gachibowli</option>
+              <option>Kondapur</option>
+              <option>Secunderabad</option>
+              <option>Himayatnagar</option>
+            </select>
+          </label>
+          <label class="tailors-filter">
+            <span class="visually-hidden">Specialization</span>
+            <select id="service-filter">
+              <option value="all">All services</option>
+              <option>Alterations</option>
+              <option>Embroidery</option>
+              <option>Custom Upcycling</option>
+              <option>Zipper Repair</option>
+              <option>Denim Revival</option>
+            </select>
+          </label>
+          <label class="tailors-filter">
+            <span class="visually-hidden">Minimum rating</span>
+            <select id="rating-filter">
+              <option value="0">All ratings</option>
+              <option value="4.5">4.5★+</option>
+              <option value="4.8">4.8★+</option>
+            </select>
+          </label>
+          <button class="tailors-nearby-button" id="near-me-button" type="button">Near Me</button>
+          <button class="tailors-nearby-button tailors-search-area" id="search-map-area" type="button">Refresh Hyderabad Listings</button>
+        </div>
+        <div id="tailors-map" role="application" aria-label="Interactive map showing tailor shops in Hyderabad"></div>
+        <p class="tailors-map-note">Community listings from OpenStreetMap · drag to explore</p>
+      </section>
+
+      <aside class="tailors-directory" aria-labelledby="tailors-title">
+        <header class="tailors-directory__header">
+          <p class="tailors-eyebrow">MEND, MAKE, MAKE IT YOURS</p>
+          <h1 id="tailors-title">Find your tailor</h1>
+          <p>Thoughtful repairs and one-of-a-kind stitches, around Hyderabad.</p>
+          <span class="tailors-results" id="tailors-results" aria-live="polite"></span>
+          <span class="tailors-fetch-status" id="tailors-fetch-status" role="status" aria-live="polite" hidden></span>
+        </header>
+        <div class="tailors-community-actions">
+          <button class="tailors-suggest-button" id="open-suggest-dialog" type="button">Know a great local tailor? + Add to map</button>
+        </div>
+        <div class="tailors-card-list" id="tailors-card-list"></div>
+        <p class="tailors-empty" id="tailors-empty" hidden>No tailors match these filters. Try another area or service.</p>
+      </aside>
+    </main>
+
+    <dialog class="tailors-booking-dialog" id="booking-dialog" aria-labelledby="booking-title">
+      <form class="tailors-booking-form" id="booking-form">
+        <button class="tailors-dialog-close" type="button" data-close-booking aria-label="Close booking dialog">×</button>
+        <p class="tailors-eyebrow">A LITTLE LOVE FOR YOUR CLOTHES</p>
+        <h2 id="booking-title">Book a repair</h2>
+        <p class="tailors-booking-shop" id="booking-shop-name"></p>
+        <label for="booking-garment">What needs mending?</label>
+        <select id="booking-garment" name="garment" required>
+          <option value="">Choose a garment</option>
+          <option>Jeans or trousers</option>
+          <option>Dress or skirt</option>
+          <option>Shirt or blouse</option>
+          <option>Jacket or coat</option>
+          <option>Other garment</option>
+        </select>
+        <label for="booking-service">Repair service</label>
+        <select id="booking-service" name="service" required>
+          <option value="">Choose a service</option>
+          <option>Alterations</option>
+          <option>Embroidery</option>
+          <option>Custom Upcycling</option>
+          <option>Zipper Repair</option>
+          <option>Denim Revival</option>
+        </select>
+        <label for="booking-date">Preferred date</label>
+        <input id="booking-date" name="date" type="date" required>
+        <p class="tailors-booking-confirmation" id="booking-confirmation" role="status" hidden></p>
+        <div class="tailors-booking-actions">
+          <button class="tailors-button tailors-button--quiet" type="button" data-close-booking>Cancel</button>
+          <button class="tailors-button tailors-button--primary" type="submit">Save demo request</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog class="tailors-form-dialog" id="suggest-dialog" aria-labelledby="suggest-title">
+      <form class="tailors-form-dialog__form" id="suggest-form">
+        <button class="tailors-dialog-close" type="button" data-close-suggest aria-label="Close dialog">×</button>
+        <p class="tailors-eyebrow">GROW OUR LOCAL STITCH CIRCLE</p>
+        <h2 id="suggest-title">Suggest a tailor</h2>
+        <p class="tailors-form-intro">Add a neighborhood tailor to the community map. Listings start community-submitted and appear near the chosen neighborhood center until claimed and verified.</p>
+        <label for="suggest-name">Shop name</label>
+        <input id="suggest-name" name="name" type="text" maxlength="100" required>
+        <label for="suggest-area">Neighborhood</label>
+        <select id="suggest-area" name="area" required>
+          <option value="">Choose an area</option>
+          <option>Jubilee Hills</option>
+          <option>Banjara Hills</option>
+          <option>Madhapur</option>
+          <option>Gachibowli</option>
+          <option>Kondapur</option>
+          <option>Secunderabad</option>
+          <option>Himayatnagar</option>
+        </select>
+        <label for="suggest-street">Street or address <span>(optional)</span></label>
+        <input id="suggest-street" name="street" type="text" maxlength="160">
+        <label for="suggest-phone">Phone <span>(optional)</span></label>
+        <input id="suggest-phone" name="phone" type="tel" maxlength="40">
+        <fieldset class="tailors-service-options">
+          <legend>Services, if you know them</legend>
+          <label><input type="checkbox" name="services" value="Alterations"> Alterations</label>
+          <label><input type="checkbox" name="services" value="Embroidery"> Embroidery</label>
+          <label><input type="checkbox" name="services" value="Custom Upcycling"> Custom Upcycling</label>
+          <label><input type="checkbox" name="services" value="Zipper Repair"> Zipper Repair</label>
+          <label><input type="checkbox" name="services" value="Denim Revival"> Denim Revival</label>
+        </fieldset>
+        <p class="tailors-form-message" id="suggest-message" role="status" hidden></p>
+        <button class="tailors-button tailors-button--primary tailors-form-submit" type="submit">Add to community map</button>
+      </form>
+    </dialog>
+
+    <dialog class="tailors-form-dialog" id="review-dialog" aria-labelledby="review-title">
+      <form class="tailors-form-dialog__form" id="review-form">
+        <button class="tailors-dialog-close" type="button" data-close-review aria-label="Close dialog">×</button>
+        <p class="tailors-eyebrow">HELP YOUR NEIGHBORS FIND A GOOD FIT</p>
+        <h2 id="review-title">Leave a review</h2>
+        <p class="tailors-booking-shop" id="review-shop-name"></p>
+        <fieldset class="tailors-review-rating">
+          <legend>Your rating</legend>
+          <div class="tailors-review-rating__options">
+            <label><input type="radio" name="rating" value="1" required><span>1 ★</span></label>
+            <label><input type="radio" name="rating" value="2"><span>2 ★</span></label>
+            <label><input type="radio" name="rating" value="3"><span>3 ★</span></label>
+            <label><input type="radio" name="rating" value="4"><span>4 ★</span></label>
+            <label><input type="radio" name="rating" value="5"><span>5 ★</span></label>
+          </div>
+        </fieldset>
+        <label for="review-text">Your review</label>
+        <textarea id="review-text" name="review" rows="4" maxlength="600" required></textarea>
+        <label for="review-photo">Add a photo <span>(optional)</span></label>
+        <input id="review-photo" name="photo" type="file" accept="image/*">
+        <p class="tailors-form-message" id="review-message" role="status" hidden></p>
+        <button class="tailors-button tailors-button--primary tailors-form-submit" type="submit">Post review</button>
+      </form>
+    </dialog>
+
+    <p class="tailors-toast" id="tailors-toast" role="status" aria-live="polite"></p>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script src="js/nav-auth.js"></script>
+    <script src="js/tailors.js"></script>
+  </body>
+</html>

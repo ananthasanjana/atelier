@@ -2168,3 +2168,1096 @@ button {
     opacity: 1;
   }
 }
+
+.tailors-page {
+  --olive-header: #6B6638;
+  --tailors-cream: #F4EFE4;
+
+  display: flex;
+  width: 100%;
+  height: 100vh;
+  height: 100svh;
+  min-height: 0;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.tailors-page .atelier-navbar {
+  flex: 0 0 auto;
+  margin-bottom: 0;
+}
+
+.tailors-workspace {
+  display: grid;
+  min-height: 0;
+  flex: 1 1 auto;
+  grid-template-columns: minmax(0, 1.63fr) minmax(340px, 1fr);
+  overflow: hidden;
+  background: var(--profile-bg);
+}
+
+.tailors-map-pane {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: #e8dfc9;
+}
+
+#tailors-map {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: #e8dfc9;
+}
+
+#tailors-map .leaflet-tile-pane {
+  filter: sepia(0.23) saturate(0.78) brightness(1.03);
+}
+
+.tailors-map-filters {
+  position: absolute;
+  z-index: 600;
+  top: 18px;
+  left: 18px;
+  display: flex;
+  max-width: calc(100% - 36px);
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  border: 1.5px solid var(--card-lime-border);
+  border-radius: 999px;
+  background: rgb(250 248 242 / 96%);
+  box-shadow: 0 5px 18px rgb(52 48 35 / 14%);
+}
+
+.tailors-filter {
+  display: flex;
+}
+
+.tailors-filter select,
+.tailors-nearby-button {
+  min-height: 36px;
+  padding: 7px 30px 7px 13px;
+  border: 1px solid #e6dfd0;
+  border-radius: 999px;
+  background-color: #fffefa;
+  color: #454332;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.tailors-filter select:focus-visible,
+.tailors-nearby-button:focus-visible,
+.tailors-button:focus-visible,
+.tailor-card:focus-visible {
+  outline: 2px solid #65613f;
+  outline-offset: 2px;
+}
+
+.tailors-nearby-button {
+  padding-right: 15px;
+  border-color: var(--card-lime-border);
+  background: var(--card-lime);
+  font-weight: 600;
+}
+
+.tailors-map-note {
+  position: absolute;
+  z-index: 500;
+  right: 12px;
+  bottom: 8px;
+  margin: 0;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: rgb(250 248 242 / 88%);
+  color: #625e4f;
+  font-size: 11px;
+  pointer-events: none;
+}
+
+.atelier-map-pin-shell,
+.atelier-map-pin-shell.leaflet-div-icon {
+  width: auto !important;
+  height: auto !important;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.atelier-map-pin {
+  display: inline-flex;
+  min-width: 76px;
+  max-width: 136px;
+  height: 38px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 10px;
+  border: 2px solid #faf8f2;
+  border-radius: 999px 999px 999px 8px;
+  background: var(--olive-header);
+  box-shadow: 0 3px 9px rgb(35 32 22 / 28%);
+  color: #fffdf3;
+  font-size: 11px;
+  white-space: nowrap;
+  transition: background-color 140ms ease, color 140ms ease, transform 140ms ease;
+}
+
+.atelier-map-pin strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #f5e29b;
+  font-weight: 700;
+}
+
+.atelier-map-pin--active,
+.leaflet-marker-icon:hover .atelier-map-pin {
+  transform: scale(1.1);
+  border-color: var(--olive-header);
+  background: var(--pastel-pink);
+  color: #383426;
+}
+
+.atelier-map-pin--active strong,
+.leaflet-marker-icon:hover .atelier-map-pin strong {
+  color: #665320;
+}
+
+.atelier-map-pin--community {
+  background: #747548;
+}
+
+.atelier-map-pin--verified {
+  background: #5d6038;
+}
+
+.atelier-map-pin--active.atelier-map-pin--community,
+.atelier-map-pin--active.atelier-map-pin--verified,
+.leaflet-marker-icon:hover .atelier-map-pin--community,
+.leaflet-marker-icon:hover .atelier-map-pin--verified {
+  background: var(--pastel-pink);
+}
+
+.tailors-directory {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+  overflow: hidden;
+  border-left: 1px solid #e2dac9;
+  background: #faf8f2;
+}
+
+.tailors-directory__header {
+  flex: 0 0 auto;
+  padding: 24px 24px 16px;
+  border-bottom: 1px solid #e7e0d1;
+  background:
+    radial-gradient(ellipse at 92% 0, rgb(200 211 137 / 21%), transparent 48%),
+    #faf8f2;
+}
+
+.tailors-eyebrow {
+  margin: 0 0 5px;
+  color: #777346;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+}
+
+.tailors-directory__header h1 {
+  margin: 0;
+  color: #393724;
+  font-family: var(--font-serif);
+  font-size: clamp(26px, 2.4vw, 34px);
+  line-height: 1.2;
+}
+
+.tailors-directory__header > p:not(.tailors-eyebrow) {
+  margin: 6px 0 10px;
+  color: #6f6b5c;
+  font-size: 13px;
+}
+
+.tailors-results {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #edf0d8;
+  color: #555535;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.tailors-card-list {
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: 14px;
+  scrollbar-color: #bbb78e transparent;
+  scrollbar-width: thin;
+}
+
+.tailor-card {
+  margin-bottom: 13px;
+  overflow: hidden;
+  border: 1px solid #e9e2d4;
+  border-radius: 17px;
+  background: #fffefa;
+  box-shadow: 0 3px 10px rgb(54 47 32 / 6%);
+  transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+.tailor-card:hover,
+.tailor-card.is-active {
+  transform: translateY(-1px);
+  border-color: #a8b568;
+  box-shadow: 0 7px 18px rgb(54 47 32 / 12%);
+}
+
+.tailor-card__image {
+  display: block;
+  width: 100%;
+  height: 112px;
+  object-fit: cover;
+  object-position: center 45%;
+}
+
+.tailor-card__body {
+  padding: 13px 15px 15px;
+}
+
+.tailor-card__title-row,
+.tailor-card__meta,
+.tailor-card__details,
+.tailor-card__actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.tailor-card__title-row {
+  align-items: flex-start;
+}
+
+.tailor-card__title-row h2 {
+  margin: 0;
+  color: #373527;
+  font-size: 17px;
+  line-height: 1.2;
+}
+
+.tailor-verified {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 7px;
+  border: 1px solid #dfe6bb;
+  border-radius: 999px;
+  background: #f1f3df;
+  color: #536038;
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.tailor-verified > span {
+  display: grid;
+  width: 13px;
+  height: 13px;
+  place-items: center;
+  border-radius: 50%;
+  background: #85934d;
+  color: white;
+  font-size: 9px;
+}
+
+.tailor-card__meta {
+  justify-content: flex-start;
+  margin-top: 6px;
+  color: #777364;
+  font-size: 12px;
+}
+
+.tailor-card__address {
+  margin: 8px 0;
+  color: #777364;
+  font-size: 11px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.tailor-rating,
+.tailor-popup__rating {
+  color: #a67527;
+  font-weight: 700;
+}
+
+.tailor-card__bio {
+  margin: 10px 0;
+  color: #696658;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.tailors-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.tailors-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #edf0dc;
+  color: #555638;
+  font-size: 10px;
+  line-height: 1.2;
+}
+
+.tailor-card__details {
+  align-items: stretch;
+  margin-top: 12px;
+  padding: 10px 0;
+  border-top: 1px dashed #e6dfd0;
+  border-bottom: 1px dashed #e6dfd0;
+}
+
+.tailor-card__details p {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+  margin: 0;
+  color: #484637;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.tailor-card__details p > span,
+.tailor-card__menu > span {
+  color: #89836f;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+}
+
+.tailor-card__details a {
+  text-decoration: none;
+}
+
+.tailor-card__menu {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin: 10px 0;
+  color: #57533f;
+  font-size: 11px;
+}
+
+.tailor-card__actions,
+.tailor-popup__actions {
+  justify-content: flex-start;
+}
+
+.tailors-button {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  justify-content: center;
+  padding: 7px 15px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: filter 140ms ease, transform 140ms ease;
+}
+
+.tailors-button:hover {
+  transform: translateY(-1px);
+  filter: brightness(0.97);
+}
+
+.tailors-button--primary {
+  background: var(--pastel-pink);
+  color: #383126;
+}
+
+.tailors-button--quiet {
+  border-color: #d7d1c2;
+  background: #faf8f2;
+  color: #4b493c;
+}
+
+.tailors-empty {
+  margin: auto;
+  padding: 28px;
+  color: #6f6b5c;
+  text-align: center;
+  font-size: 14px;
+}
+
+.tailors-empty[hidden] {
+  display: none;
+}
+
+.tailors-page .leaflet-popup {
+  z-index: 1000 !important;
+  opacity: 1 !important;
+}
+
+.tailors-page .leaflet-popup-content-wrapper,
+.tailors-page .leaflet-popup-tip {
+  background-color: #FAF8F2 !important;
+  opacity: 1 !important;
+}
+
+.tailors-page .leaflet-popup-content-wrapper {
+  border: 1.5px solid #A8B568;
+  border-radius: 16px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.18);
+}
+
+.tailors-page .leaflet-popup-content {
+  width: 270px !important;
+  margin: 10px;
+}
+
+.leaflet-popup-close-button {
+  z-index: 2;
+}
+
+.tailor-popup__image {
+  display: block;
+  width: 100%;
+  height: 94px;
+  border-radius: 10px;
+  object-fit: cover;
+}
+
+.tailor-popup__content {
+  padding-top: 8px;
+}
+
+.tailor-popup__title {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 6px;
+  color: #363426;
+  font-size: 14px;
+}
+
+.tailor-popup__rating {
+  margin: 5px 0 8px;
+  font-size: 12px;
+}
+
+.tailor-popup__rating > span {
+  color: #777364;
+  font-weight: 400;
+}
+
+.tailor-popup__address {
+  margin: -4px 0 8px;
+  color: #777364;
+  font-size: 11px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.tailor-popup__price {
+  margin: 8px 0;
+  color: #686452;
+  font-size: 12px;
+}
+
+.tailor-popup__actions {
+  display: flex;
+  gap: 7px;
+}
+
+.tailors-booking-dialog {
+  width: min(440px, calc(100% - 28px));
+  max-width: none;
+  max-height: min(90vh, 700px);
+  padding: 0;
+  overflow: auto;
+  border: 1px solid #e1d8c6;
+  border-radius: 22px;
+  background: #faf8f2;
+  color: #343225;
+  box-shadow: 0 20px 70px rgb(36 32 23 / 25%);
+}
+
+.tailors-booking-dialog::backdrop {
+  background: rgb(34 32 25 / 48%);
+  backdrop-filter: blur(3px);
+}
+
+.tailors-booking-form {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding: 30px;
+}
+
+.tailors-booking-form h2 {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-size: 28px;
+}
+
+.tailors-dialog-close {
+  position: absolute;
+  top: 12px;
+  right: 15px;
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  font-size: 25px;
+  cursor: pointer;
+}
+
+.tailors-booking-shop {
+  margin: 0 0 10px;
+  color: #777346;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.tailors-booking-form label {
+  margin-top: 5px;
+  color: #55513f;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.tailors-booking-form input,
+.tailors-booking-form select {
+  width: 100%;
+  min-height: 44px;
+  padding: 9px 12px;
+  border: 1px solid #ddd6c8;
+  border-radius: 10px;
+  background: #fffefa;
+  color: #343225;
+}
+
+.tailors-booking-form input:focus,
+.tailors-booking-form select:focus {
+  border-color: #92995d;
+  outline: 2px solid rgb(168 181 104 / 20%);
+}
+
+.tailors-booking-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.tailors-booking-confirmation {
+  margin: 12px 0 0;
+  padding: 12px;
+  border-radius: 12px;
+  background: #edf0dc;
+  color: #4d5833;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.tailors-booking-confirmation[hidden] {
+  display: none;
+}
+
+.tailors-toast {
+  position: fixed;
+  z-index: 3000;
+  right: 20px;
+  bottom: 20px;
+  max-width: min(400px, calc(100vw - 40px));
+  margin: 0;
+  padding: 12px 17px;
+  transform: translateY(10px);
+  border: 1px solid #d9d2c2;
+  border-radius: 14px;
+  background: #faf8f2;
+  box-shadow: 0 8px 24px rgb(40 37 28 / 16%);
+  color: #484536;
+  font-size: 13px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 160ms ease, transform 160ms ease;
+}
+
+.tailors-toast.is-visible {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+@media (max-width: 850px) {
+  .tailors-workspace {
+    grid-template-columns: minmax(0, 1.15fr) minmax(320px, 1fr);
+  }
+
+  .tailors-map-filters {
+    right: 14px;
+    left: 14px;
+    max-width: none;
+    border-radius: 20px;
+  }
+}
+
+@media (max-width: 700px) {
+  .tailors-page {
+    overflow: auto;
+  }
+
+  .tailors-page .atelier-navbar {
+    position: sticky;
+  }
+
+  .tailors-workspace {
+    min-height: 0;
+    flex: 1 0 auto;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(300px, 46svh) minmax(0, 1fr);
+    overflow: visible;
+  }
+
+  .tailors-map-pane {
+    min-height: 300px;
+  }
+
+  .tailors-map-filters {
+    top: 12px;
+    left: 10px;
+    display: flex;
+    max-width: calc(100% - 20px);
+    gap: 6px;
+    padding: 7px;
+  }
+
+  .tailors-filter select,
+  .tailors-nearby-button {
+    min-height: 33px;
+    padding: 6px 24px 6px 10px;
+    font-size: 11px;
+  }
+
+  .tailors-nearby-button {
+    padding-right: 11px;
+  }
+
+  .tailors-directory {
+    min-height: 460px;
+    overflow: hidden;
+    border-top: 1px solid #e2dac9;
+    border-left: 0;
+  }
+
+  .tailors-directory__header {
+    padding: 20px 18px 13px;
+  }
+
+  .tailors-card-list {
+    overflow: visible;
+    padding: 12px;
+  }
+}
+
+@media (max-width: 420px) {
+  .tailors-map-filters {
+    right: 8px;
+    left: 8px;
+    max-width: calc(100% - 16px);
+    gap: 4px;
+    padding: 6px;
+  }
+
+  .tailors-filter select,
+  .tailors-nearby-button {
+    max-width: 38vw;
+    padding-right: 20px;
+    padding-left: 8px;
+    font-size: 10px;
+  }
+
+  .tailors-nearby-button {
+    padding-right: 8px;
+  }
+
+  .tailors-booking-form {
+    padding: 26px 20px 22px;
+  }
+}
+
+.tailors-fetch-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 0 6px;
+  padding: 5px 10px;
+  border: 1px solid #e4d7b4;
+  border-radius: 999px;
+  background: #fff7df;
+  color: #71613c;
+  font-size: 11px;
+}
+
+.tailors-fetch-status[hidden] {
+  display: none;
+}
+
+.tailors-fetch-status[data-kind='loading']::before {
+  width: 10px;
+  height: 10px;
+  border: 2px solid #d5c695;
+  border-top-color: #726a3e;
+  border-radius: 50%;
+  content: '';
+  animation: tailor-status-spin 800ms linear infinite;
+}
+
+.tailors-fetch-status[data-kind='error'] {
+  border-color: #e4c9bd;
+  background: #fff3ec;
+  color: #815340;
+}
+
+@keyframes tailor-status-spin {
+  to { transform: rotate(360deg); }
+}
+
+.tailors-community-actions {
+  flex: 0 0 auto;
+  padding: 12px 14px 0;
+  background: #faf8f2;
+}
+
+.tailors-suggest-button {
+  width: 100%;
+  min-height: 38px;
+  padding: 8px 13px;
+  border: 1px dashed #9aa367;
+  border-radius: 999px;
+  background: #f0f1df;
+  color: #525436;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 140ms ease, transform 140ms ease;
+}
+
+.tailors-suggest-button:hover {
+  transform: translateY(-1px);
+  background: #e7ebc8;
+}
+
+.tailor-verified {
+  border-color: #dfe6bb;
+  background: #f1f3df;
+  color: #536038;
+}
+
+.tailor-community-badge {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  padding: 4px 8px;
+  border: 1px solid #ead8ac;
+  border-radius: 999px;
+  background: #fff5dc;
+  color: #806334;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.035em;
+  text-transform: uppercase;
+}
+
+.tailor-rating--empty {
+  color: #817c6c;
+  font-weight: 500;
+}
+
+.tailor-card__community-review {
+  margin: 10px 0;
+  padding: 8px 10px;
+  border-left: 2px solid #d5c596;
+  background: #fff9e9;
+  color: #70654c;
+  font-size: 11px;
+  font-style: italic;
+  line-height: 1.4;
+}
+
+.tailor-card__details--community {
+  justify-content: flex-start;
+}
+
+.tailor-card__details--community > p {
+  flex: 1 1 50%;
+}
+
+.tailor-card__actions--community {
+  flex-wrap: wrap;
+}
+
+.tailors-button--review {
+  border-color: #e5d6d6;
+  background: #fff9f7;
+  color: #695351;
+}
+
+.tailor-claim-link {
+  display: inline-block;
+  margin-top: 10px;
+  color: #79643c;
+  font-size: 11px;
+  font-weight: 600;
+  text-decoration-color: #c8b78f;
+  text-underline-offset: 3px;
+}
+
+.tailor-claim-link:hover {
+  color: #51462e;
+}
+
+.tailors-tag--muted {
+  background: #f0ede5;
+  color: #757061;
+}
+
+.tailor-card__gallery {
+  display: flex;
+  gap: 7px;
+  overflow: auto;
+  padding: 10px 0 2px;
+}
+
+.tailor-card__gallery img {
+  width: 54px;
+  height: 54px;
+  flex: 0 0 54px;
+  border: 2px solid #fff;
+  border-radius: 9px;
+  object-fit: cover;
+  box-shadow: 0 1px 5px rgb(48 43 32 / 15%);
+}
+
+.tailors-form-dialog {
+  width: min(480px, calc(100% - 28px));
+  max-width: none;
+  max-height: min(90vh, 760px);
+  padding: 0;
+  overflow: auto;
+  border: 1px solid #e1d8c6;
+  border-radius: 22px;
+  background: #faf8f2;
+  color: #343225;
+  box-shadow: 0 20px 70px rgb(36 32 23 / 25%);
+}
+
+.tailors-form-dialog::backdrop {
+  background: rgb(34 32 25 / 48%);
+  backdrop-filter: blur(3px);
+}
+
+.tailors-form-dialog__form {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 30px;
+}
+
+.tailors-form-dialog__form h2 {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-size: 28px;
+}
+
+.tailors-form-dialog__form > label,
+.tailors-review-rating legend {
+  margin-top: 5px;
+  color: #55513f;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.tailors-form-dialog__form > label span {
+  color: #888171;
+  font-size: 11px;
+  font-weight: 400;
+}
+
+.tailors-form-dialog__form input:not([type='checkbox']):not([type='radio']),
+.tailors-form-dialog__form select,
+.tailors-form-dialog__form textarea {
+  width: 100%;
+  min-height: 42px;
+  padding: 9px 12px;
+  border: 1px solid #ddd6c8;
+  border-radius: 10px;
+  background: #fffefa;
+  color: #343225;
+}
+
+.tailors-form-dialog__form textarea {
+  min-height: 96px;
+  resize: vertical;
+}
+
+.tailors-form-dialog__form input[type='file'] {
+  padding: 7px;
+}
+
+.tailors-form-intro {
+  margin: 0 0 8px;
+  color: #6f6b5c;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.tailors-service-options,
+.tailors-review-rating {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 0 0;
+  border: 0;
+}
+
+.tailors-service-options legend {
+  margin-bottom: 7px;
+  color: #55513f;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.tailors-service-options label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: #edf0dc;
+  color: #555638;
+  font-size: 11px;
+}
+
+.tailors-service-options input {
+  accent-color: #737943;
+}
+
+.tailors-review-rating {
+  display: block;
+  margin: 2px 0 0;
+  padding: 0;
+}
+
+.tailors-review-rating legend {
+  margin-bottom: 8px;
+}
+
+.tailors-review-rating__options {
+  display: flex;
+  gap: 6px;
+}
+
+.tailors-review-rating__options label {
+  flex: 1 1 0;
+  cursor: pointer;
+}
+
+.tailors-review-rating__options input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.tailors-review-rating__options span {
+  display: flex;
+  min-height: 38px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #e1d8c6;
+  border-radius: 10px;
+  background: #fffefa;
+  color: #8d6a35;
+  font-size: 12px;
+  transition: background-color 120ms ease, border-color 120ms ease;
+}
+
+.tailors-review-rating__options input:checked + span {
+  border-color: #c09b58;
+  background: #fff0c8;
+}
+
+.tailors-review-rating__options input:focus-visible + span {
+  outline: 2px solid #65613f;
+  outline-offset: 2px;
+}
+
+.tailors-form-message {
+  margin: 4px 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #fff0e8;
+  color: #815340;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.tailors-form-message[hidden] {
+  display: none;
+}
+
+.tailors-form-submit {
+  align-self: flex-end;
+  min-height: 40px;
+  margin-top: 10px;
+}
+
+.signup-claim-banner {
+  margin: -7px 0 18px;
+  padding: 12px 14px;
+  border: 1px solid #dfe3b9;
+  border-radius: 12px;
+  background: #f1f3df;
+  color: #515636;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.signup-claim-banner[hidden] {
+  display: none;
+}
+
+@media (max-width: 700px) {
+  .tailors-search-area {
+    padding-right: 11px;
+  }
+
+  .tailors-community-actions {
+    padding-right: 10px;
+    padding-left: 10px;
+  }
+
+  .tailors-form-dialog__form {
+    padding: 26px 20px 22px;
+  }
+}
