@@ -26,27 +26,43 @@ async function uploadToCloudinary(file) {
   formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
   showProfileToast('Uploading...', 'loading');
 
-  try {
-    const response = await fetch(
-      `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
-      { method: 'POST', body: formData }
-    );
-    const data = await response.json();
+  const response = await fetch(
+    `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
+    { method: 'POST', body: formData }
+  );
+  const data = await response.json();
 
-    if (!response.ok) {
-      throw new Error(data.error && data.error.message
-        ? data.error.message
-        : 'Cloudinary could not upload this image.');
-    }
-    if (typeof data.secure_url !== 'string' || !data.secure_url) {
-      throw new Error('Cloudinary did not return a secure image URL.');
-    }
-
-    return data.secure_url;
-  } catch (error) {
-    showProfileToast(`Upload failed: ${error.message}`, 'error');
-    throw error;
+  if (!response.ok) {
+    const errorMessage = data && data.error && data.error.message;
+    throw new Error(typeof errorMessage === 'string'
+      ? errorMessage
+      : 'Cloudinary could not upload this image.');
   }
+  if (!data || typeof data.secure_url !== 'string' || !data.secure_url) {
+    throw new Error('Cloudinary did not return a secure image URL.');
+  }
+
+  return data.secure_url;
+}
+
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.addEventListener('load', () => {
+      if (typeof reader.result === 'string') {
+        resolve(reader.result);
+      } else {
+        reject(new Error('The selected image could not be read.'));
+      }
+    }, { once: true });
+    reader.addEventListener('error', () => {
+      reject(reader.error || new Error('The selected image could not be read.'));
+    }, { once: true });
+    reader.addEventListener('abort', () => {
+      reject(new Error('Reading the selected image was canceled.'));
+    }, { once: true });
+    reader.readAsDataURL(file);
+  });
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -195,6 +211,11 @@ document.addEventListener('DOMContentLoaded', () => {
     elements.editDialog.showModal();
   });
 
+  const bannerInput = document.getElementById('banner-file-input');
+  document.getElementById('edit-banner-button').addEventListener('click', () => {
+    bannerInput.click();
+  });
+
   elements.editForm.addEventListener('submit', (event) => {
     event.preventDefault();
     const formData = new FormData(elements.editForm);
@@ -246,6 +267,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const previousUrl = profile[field];
     let previewUrl = '';
+    let keepPreviewUrl = false;
     try {
       previewUrl = URL.createObjectURL(file);
       imageElement.src = previewUrl;
@@ -255,9 +277,10 @@ document.addEventListener('DOMContentLoaded', () => {
       const secureUrl = await uploadToCloudinary(file);
       const nextProfile = { ...profile, [field]: secureUrl };
       if (!saveProfile(nextProfile)) {
-        imageElement.src = previousUrl || '';
-        imageElement.hidden = !previousUrl;
-        fallbackElement.hidden = Boolean(previousUrl);
+        imageElement.src = previewUrl;
+        imageElement.hidden = false;
+        fallbackElement.hidden = true;
+        keepPreviewUrl = true;
         return;
       }
 
@@ -266,11 +289,33 @@ document.addEventListener('DOMContentLoaded', () => {
       showProfileToast('Image updated.');
     } catch (error) {
       console.error('Unable to upload the profile image.', error);
-      imageElement.src = previousUrl || '';
-      imageElement.hidden = !previousUrl;
-      fallbackElement.hidden = Boolean(previousUrl);
+      try {
+        const dataUrl = await readFileAsDataUrl(file);
+        const nextProfile = { ...profile, [field]: dataUrl };
+        if (!saveProfile(nextProfile)) {
+          imageElement.src = previewUrl || previousUrl || '';
+          imageElement.hidden = !previewUrl && !previousUrl;
+          fallbackElement.hidden = Boolean(previewUrl || previousUrl);
+          keepPreviewUrl = Boolean(previewUrl);
+          showProfileToast(`Image upload failed (${error.message}); the local fallback could not be saved.`, 'error');
+          return;
+        }
+
+        profile = nextProfile;
+        imageElement.src = dataUrl;
+        imageElement.hidden = false;
+        fallbackElement.hidden = true;
+        showProfileToast(`Cloudinary upload failed; saved the image locally instead. ${error.message}`, 'error');
+      } catch (fallbackError) {
+        console.error('Unable to save a local profile image fallback.', fallbackError);
+        imageElement.src = previewUrl || previousUrl || '';
+        imageElement.hidden = !previewUrl && !previousUrl;
+        fallbackElement.hidden = Boolean(previewUrl || previousUrl);
+        keepPreviewUrl = Boolean(previewUrl);
+        showProfileToast(`Cloudinary upload failed (${error.message}); local fallback failed (${fallbackError.message}).`, 'error');
+      }
     } finally {
-      if (previewUrl) {
+      if (previewUrl && !keepPreviewUrl) {
         URL.revokeObjectURL(previewUrl);
       }
       input.value = '';
