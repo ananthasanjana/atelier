@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#65613f">
+    <title>Sign Up | Atelier</title>
+    <link rel="stylesheet" href="css/style.css">
+  </head>
+  <body class="bg-stripes">
+    <header class="atelier-navbar">
+      <a class="atelier-brand" href="index.html" aria-label="Atelier home">
+        <span class="atelier-brand__name">Atelier</span>
+        <span class="atelier-brand__tagline">one cloth many paths</span>
+      </a>
+      <nav class="atelier-nav-links" aria-label="Main navigation">
+        <a href="index.html">home</a>
+        <a href="my-closet.html">my closet</a>
+        <a href="tailors.html">tailors</a>
+        <a href="marketplace.html">marketplace</a>
+        <a href="community.html">community</a>
+        <a href="events.html">events</a>
+      </nav>
+      <a class="atelier-login" href="login.html" id="nav-login-btn">login</a>
+      <a class="atelier-profile-link" href="profile.html" id="nav-profile-btn" style="display: none;">
+        <span class="atelier-avatar" aria-hidden="true">
+          <svg viewBox="0 0 36 36">
+            <circle cx="18" cy="12" r="5"></circle>
+            <path d="M8 29c0-6 4-9 10-9s10 3 10 9"></path>
+          </svg>
+        </span>
+        <span>Profile</span>
+      </a>
+    </header>
+
+    <main class="auth-page">
+      <section class="auth-card auth-card--signup" aria-labelledby="signup-title">
+        <h1 class="auth-card__title" id="signup-title">SIGNUP</h1>
+        <form class="auth-form auth-form--signup" id="signup-form">
+          <div class="auth-grid">
+            <div class="auth-field">
+              <label for="signup-name">Name</label>
+              <input
+                id="signup-name"
+                name="name"
+                type="text"
+                autocomplete="name"
+                required
+              >
+            </div>
+            <div class="auth-field">
+              <label for="signup-email">Email Address</label>
+              <input
+                id="signup-email"
+                name="email"
+                type="email"
+                autocomplete="email"
+                required
+              >
+            </div>
+            <div class="auth-field">
+              <label for="signup-password">Password</label>
+              <input
+                id="signup-password"
+                name="password"
+                type="password"
+                autocomplete="new-password"
+                required
+              >
+            </div>
+            <div class="auth-field">
+              <label for="repeat-password">Repeat Password</label>
+              <input
+                id="repeat-password"
+                name="repeatPassword"
+                type="password"
+                autocomplete="new-password"
+                required
+              >
+            </div>
+          </div>
+          <div class="auth-field">
+            <label for="signup-role">I am a...</label>
+            <select class="auth-select" id="signup-role" name="role">
+              <option value="Member / Student">Member / Student</option>
+              <option value="Tailor / Designer">Tailor / Designer</option>
+              <option value="Seller">Seller</option>
+            </select>
+          </div>
+          <label class="auth-consent" for="terms-consent">
+            <input id="terms-consent" name="terms" type="checkbox" required>
+            <span>
+              I agree to <a href="index.html#terms-of-services">Terms of Services</a>
+              and <a href="index.html#privacy-policy">Privacy Policy</a>
+            </span>
+          </label>
+          <button class="auth-submit" type="submit">Sign Up</button>
+          <p class="auth-feedback" id="signup-feedback" aria-live="polite"></p>
+          <div class="auth-card__providers">
+            <button class="auth-provider" id="google-signup" type="button">
+              <svg class="auth-provider__icon" viewBox="0 0 48 48" aria-hidden="true">
+                <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5Z"/>
+                <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.77 7.18l7.73 6C44.4 38.05 46.98 31.95 46.98 24.55Z"/>
+                <path fill="#FBBC05" d="M10.53 28.59a14.4 14.4 0 0 1 0-9.18l-7.98-6.19a23.95 23.95 0 0 0 0 21.56l7.98-6.19Z"/>
+                <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.9-5.8l-7.73-6c-2.14 1.44-4.89 2.3-8.17 2.3-6.26 0-11.57-4.22-13.46-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48Z"/>
+              </svg>
+              <span>Continue with Google</span>
+            </button>
+          </div>
+        </form>
+        <p class="auth-card__footer">
+          Already have an account? <a href="login.html">Login</a>
+        </p>
+      </section>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabase-auth.js"></script>
+    <script>
+      (() => {
+        const form = document.getElementById('signup-form');
+        const nameInput = document.getElementById('signup-name');
+        const emailInput = document.getElementById('signup-email');
+        const passwordInput = document.getElementById('signup-password');
+        const repeatPasswordInput = document.getElementById('repeat-password');
+        const roleInput = document.getElementById('signup-role');
+        const feedback = document.getElementById('signup-feedback');
+        const googleButton = document.getElementById('google-signup');
+
+        function makeUsername(value) {
+          const slug = value
+            .trim()
+            .normalize('NFKD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/^-+|-+$/g, '');
+          return `@${slug || 'atelier-member'}`;
+        }
+
+        function saveAndContinue(user) {
+          try {
+            window.localStorage.setItem('atelierUser', JSON.stringify(user));
+          } catch (error) {
+            console.error('Unable to save the demo user in localStorage.', error);
+            feedback.textContent = 'Could not save your demo profile. Please enable browser storage and try again.';
+            return;
+          }
+
+          window.location.assign('profile.html');
+        }
+
+        function validatePasswordMatch() {
+          if (repeatPasswordInput.value && repeatPasswordInput.value !== passwordInput.value) {
+            repeatPasswordInput.setCustomValidity('Passwords do not match.');
+          } else {
+            repeatPasswordInput.setCustomValidity('');
+          }
+        }
+
+        passwordInput.addEventListener('input', validatePasswordMatch);
+        repeatPasswordInput.addEventListener('input', validatePasswordMatch);
+
+        form.addEventListener('submit', (event) => {
+          event.preventDefault();
+          validatePasswordMatch();
+          if (!form.reportValidity()) {
+            return;
+          }
+
+          saveAndContinue({
+            name: nameInput.value.trim(),
+            username: makeUsername(nameInput.value),
+            email: emailInput.value.trim(),
+            role: roleInput.value
+          });
+        });
+
+        googleButton.addEventListener('click', () => {
+          if (!window.atelierGoogleAuth) {
+            feedback.textContent = 'Google sign-in is unavailable. Check your connection and try again.';
+            return;
+          }
+          window.atelierGoogleAuth.start(roleInput.value, feedback, googleButton);
+        });
+
+        if (window.atelierGoogleAuth) {
+          window.atelierGoogleAuth.complete(feedback);
+        }
+      })();
+    </script>
+    <script src="js/nav-auth.js"></script>
+  </body>
+</html>

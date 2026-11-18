@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#65613f">
+    <title>Atelier | One cloth, many paths</title>
+    <link rel="stylesheet" href="css/style.css">
+  </head>
+  <body class="bg-graph-paper home-page">
+    <header class="atelier-navbar">
+      <a class="atelier-brand" href="index.html" aria-label="Atelier home">
+        <span class="atelier-brand__name">Atelier</span>
+        <span class="atelier-brand__tagline">one cloth many paths</span>
+      </a>
+      <nav class="atelier-nav-links" aria-label="Main navigation">
+        <a href="index.html" aria-current="page">home</a>
+        <a href="my-closet.html">my closet</a>
+        <a href="tailors.html">tailors</a>
+        <a href="marketplace.html">marketplace</a>
+        <a href="community.html">community</a>
+        <a href="events.html">events</a>
+      </nav>
+      <a class="atelier-login" href="login.html" id="nav-login-btn">login</a>
+      <a class="atelier-profile-link" href="profile.html" id="nav-profile-btn" style="display: none;">
+        <span class="atelier-avatar" aria-hidden="true">
+          <svg viewBox="0 0 36 36">
+            <circle cx="18" cy="12" r="5"></circle>
+            <path d="M8 29c0-6 4-9 10-9s10 3 10 9"></path>
+          </svg>
+        </span>
+        <span>Profile</span>
+      </a>
+    </header>
+
+    <main>
+      <section class="home-hero">
+        <div class="home-hero__copy">
+          <h1>Repair, reuse, and reimagine every fabric story.</h1>
+          <p>
+            Atelier brings together local tailors, circular resale, and community-led
+            upcycling to extend the life of garments and rethink fashion consumption.
+          </p>
+          <div class="home-hero__actions">
+            <a href="my-closet.html">build your closet</a>
+            <a href="tailors.html">book a repair</a>
+          </div>
+        </div>
+        <div class="home-hero__art" aria-label="Clothes, a handwritten note, and a caterpillar illustration">
+          <img
+            class="home-hero__rack"
+            src="assets/hero-clothes-rack.png"
+            alt="A clothes rack with vintage garments and a red handbag"
+          >
+          <figure class="home-hero__note">
+            <img src="assets/hero-sticky-note.png" alt="">
+            <figcaption>Simplicity is the ultimate sophistication.</figcaption>
+          </figure>
+          <img
+            class="home-hero__caterpillar"
+            src="assets/hero-caterpillar.png"
+            alt=""
+          >
+        </div>
+      </section>
+
+      <section class="home-intro" aria-labelledby="home-intro-title">
+        <div class="home-intro__content">
+          <div class="home-intro__welcome">
+            <svg viewBox="0 0 40 40" aria-hidden="true">
+              <path d="M20 1c2.5 11.5 7.5 16.5 19 19-11.5 2.5-16.5 7.5-19 19C17.5 27.5 12.5 22.5 1 20 12.5 17.5 17.5 12.5 20 1Z" />
+            </svg>
+            <p>Welcome to Atelier!</p>
+          </div>
+          <h2 id="home-intro-title">
+            For Fashion lovers to enjoy fashion more sustainably and seamlessly.
+          </h2>
+          <p class="home-intro__description">
+            Helping steer fashion in a more sustainable direction by simplifying outfit styling
+            and giving existing wardrobes a second life.
+          </p>
+        </div>
+        <div class="home-cards" role="region" aria-label="Explore Atelier services">
+          <div class="home-cards__track">
+            <div class="home-cards__group">
+              <article class="home-card home-card--blush">
+                <img src="assets/outfit-five-members.jpg" alt="Five coordinated outfit collages">
+                <div class="home-card__copy">
+                  <h3>AI Personal Stylist/Circular Assistant</h3>
+                  <p>Upload pictures of your clothes and get personalised outfits whenever you need them. Our AI scans clothes for any repairs and gives you how to fix them!</p>
+                </div>
+              </article>
+              <article class="home-card home-card--aqua">
+                <img src="assets/sewing-repair.jpg" alt="Hands repairing denim at a sewing machine">
+                <div class="home-card__copy">
+                  <h3>Tailor Network</h3>
+                  <p>Look for local tailors around you for repairs, alterations or other tailor works!</p>
+                </div>
+              </article>
+              <article class="home-card home-card--yellow">
+                <img src="assets/colorful-clothes-rack.jpg" alt="Colorful clothes hanging on a rack">
+                <div class="home-card__copy">
+                  <h3>Circular Marketplace</h3>
+                  <p>Buy/Sell/Trade pre-loved garments, deadstock fabric, and scrap bundles with clear conditions and pricing</p>
+                </div>
+              </article>
+              <article class="home-card home-card--blush">
+                <img src="assets/fashion-community.jpg" alt="Friends browsing clothes together at an outdoor thrift market">
+                <div class="home-card__copy">
+                  <h3>Fashion Community</h3>
+                  <p>Share fashion tips, repair hacks and connect with fellow fashion lovers and make fashion more sustainable!</p>
+                </div>
+              </article>
+              <article class="home-card home-card--aqua">
+                <img src="assets/events-workshop.jpg" alt="Colorful outfit collage promoting a fashion event">
+                <div class="home-card__copy">
+                  <h3>Events</h3>
+                  <p>Your local calendar for repair cafes, swap meets, and DIY upcycling workshops. Show up and learn a skill!</p>
+                </div>
+              </article>
+            </div>
+            <div class="home-cards__group" aria-hidden="true">
+              <article class="home-card home-card--blush">
+                <img src="assets/outfit-five-members.jpg" alt="">
+                <div class="home-card__copy">
+                  <h3>AI Personal Stylist/Circular Assistant</h3>
+                  <p>Upload pictures of your clothes and get personalised outfits whenever you need them. Our AI scans clothes for any repairs and gives you how to fix them!</p>
+                </div>
+              </article>
+              <article class="home-card home-card--aqua">
+                <img src="assets/sewing-repair.jpg" alt="">
+                <div class="home-card__copy">
+                  <h3>Tailor Network</h3>
+                  <p>Look for local tailors around you for repairs, alterations or other tailor works!</p>
+                </div>
+              </article>
+              <article class="home-card home-card--yellow">
+                <img src="assets/colorful-clothes-rack.jpg" alt="">
+                <div class="home-card__copy">
+                  <h3>Circular Marketplace</h3>
+                  <p>Buy/Sell/Trade pre-loved garments, deadstock fabric, and scrap bundles with clear conditions and pricing</p>
+                </div>
+              </article>
+              <article class="home-card home-card--blush">
+                <img src="assets/fashion-community.jpg" alt="">
+                <div class="home-card__copy">
+                  <h3>Fashion Community</h3>
+                  <p>Share fashion tips, repair hacks and connect with fellow fashion lovers and make fashion more sustainable!</p>
+                </div>
+              </article>
+              <article class="home-card home-card--aqua">
+                <img src="assets/events-workshop.jpg" alt="">
+                <div class="home-card__copy">
+                  <h3>Events</h3>
+                  <p>Your local calendar for repair cafes, swap meets, and DIY upcycling workshops. Show up and learn a skill!</p>
+                </div>
+              </article>
+            </div>
+          </div>
+        </div>
+        <div class="home-intro__ticker home-intro__ticker--band" aria-hidden="true">
+          <div class="home-intro__ticker-track">
+            <span>&nbsp;| making fashion sustainable&nbsp; | making fashion sustainable&nbsp; | making fashion sustainable&nbsp;</span>
+            <span>&nbsp;| making fashion sustainable&nbsp; | making fashion sustainable&nbsp; | making fashion sustainable&nbsp;</span>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="home-footer" aria-label="Atelier footer">
+      <img
+        class="home-footer__art"
+        src="assets/homepage-footer-art.png"
+        alt=""
+        aria-hidden="true"
+      >
+      <p class="home-footer__quote">
+        “A space to show your artistic fashion skills, practice sustainable fashion and find your circle.”
+      </p>
+      <nav class="home-footer__socials" aria-label="Social media">
+        <a href="https://www.instagram.com/" target="_blank" rel="noopener noreferrer" aria-label="Atelier on Instagram">
+          <svg viewBox="0 0 48 48" aria-hidden="true">
+            <rect x="6" y="6" width="36" height="36" rx="10"></rect>
+            <circle cx="24" cy="24" r="8"></circle>
+            <circle class="home-footer__icon-dot" cx="35" cy="13" r="2"></circle>
+          </svg>
+        </a>
+        <a href="https://x.com/" target="_blank" rel="noopener noreferrer" aria-label="Atelier on X">
+          <svg viewBox="0 0 48 48" aria-hidden="true">
+            <path d="M7 6 41 42M41 6 7 42"></path>
+          </svg>
+        </a>
+      </nav>
+      <p class="home-footer__accessible">
+        Got any worries? Contact us at blahblahblah@gmail.com. Atelier wordmark and decorative doodles.
+      </p>
+    </footer>
+
+    <script src="js/nav-auth.js"></script>
+  </body>
+</html>

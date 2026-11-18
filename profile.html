@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#65613f">
+    <title>Profile | Atelier</title>
+    <link rel="stylesheet" href="css/style.css">
+  </head>
+  <body class="bg-graph-paper profile-page">
+    <header class="atelier-navbar">
+      <a class="atelier-brand" href="index.html" aria-label="Atelier home">
+        <span class="atelier-brand__name">Atelier</span>
+        <span class="atelier-brand__tagline">one cloth many paths</span>
+      </a>
+      <nav class="atelier-nav-links" aria-label="Main navigation">
+        <a href="index.html">home</a>
+        <a href="my-closet.html">my closet</a>
+        <a href="tailors.html">tailors</a>
+        <a href="marketplace.html">marketplace</a>
+        <a href="community.html">community</a>
+        <a href="events.html">events</a>
+      </nav>
+      <a class="atelier-login" href="login.html" id="nav-login-btn">login</a>
+      <a class="atelier-profile-link" href="profile.html" id="nav-profile-btn" style="display: none;" aria-current="page">
+        <span class="atelier-avatar" aria-hidden="true">
+          <svg viewBox="0 0 36 36">
+            <circle cx="18" cy="12" r="5"></circle>
+            <path d="M8 29c0-6 4-9 10-9s10 3 10 9"></path>
+          </svg>
+        </span>
+        <span>Profile</span>
+      </a>
+    </header>
+
+    <main>
+      <section class="profile-welcome" aria-labelledby="profile-title">
+        <h1 id="profile-title">Welcome to Atelier</h1>
+        <p id="profile-message">Please log in to view your profile.</p>
+        <p id="profile-role"></p>
+        <a id="profile-login-link" href="login.html">Log in</a>
+        <button id="profile-logout-btn" type="button" style="display: none;">Log out</button>
+      </section>
+    </main>
+
+    <script src="js/nav-auth.js"></script>
+  </body>
+</html>
