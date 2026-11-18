@@ -21,8 +21,7 @@
         <a href="community.html">community</a>
         <a href="events.html">events</a>
       </nav>
-      <a class="atelier-login" href="login.html" id="nav-login-btn">login</a>
-      <a class="atelier-profile-link" href="profile.html" id="nav-profile-btn" style="display: none;" aria-current="page">
+      <a class="atelier-profile-link profile-navbar-user" href="profile.html" aria-current="page">
         <span class="atelier-avatar" aria-hidden="true">
           <svg viewBox="0 0 36 36">
             <circle cx="18" cy="12" r="5"></circle>
@@ -33,16 +32,181 @@
       </a>
     </header>
 
-    <main>
-      <section class="profile-welcome" aria-labelledby="profile-title">
-        <h1 id="profile-title">Welcome to Atelier</h1>
-        <p id="profile-message">Please log in to view your profile.</p>
-        <p id="profile-role"></p>
-        <a id="profile-login-link" href="login.html">Log in</a>
-        <button id="profile-logout-btn" type="button" style="display: none;">Log out</button>
+    <main class="profile-main">
+      <section class="profile-cover" aria-label="Profile cover">
+        <div class="profile-cover__meadow" id="profile-cover-fallback" aria-hidden="true"></div>
+        <img class="profile-cover__image" id="profile-cover-image" alt="" hidden>
+        <button class="profile-cover__edit" id="edit-banner-button" type="button">Edit Banner</button>
+        <input class="visually-hidden" id="banner-file-input" type="file" accept="image/*">
+      </section>
+
+      <section class="profile-upper" aria-label="Profile and lookbook">
+        <div class="profile-details">
+          <div class="profile-identity">
+            <div class="profile-avatar-wrap">
+              <div class="profile-avatar__fallback" id="profile-avatar-fallback" aria-hidden="true">
+                <svg viewBox="0 0 120 120">
+                  <rect width="120" height="120" fill="#dbe89a"></rect>
+                  <path fill="#f8f2bf" d="M14 20h8v8h-8zm10 8h8v8h-8zm-10 8h8v8h-8zm78-20h8v8h-8zm10 8h8v8h-8zm-10 8h8v8h-8zM28 78h8v8h-8zm10 8h8v8h-8zm-10 8h8v8h-8zm54-16h8v8h-8zm10 8h8v8h-8zm-10 8h8v8h-8z"></path>
+                  <path fill="#fffdf1" d="M19 18h6v6h-6zm76-2h6v6h-6zM32 80h6v6h-6zm56-4h6v6h-6z"></path>
+                  <path fill="#302b28" d="M38 43V26h17v9h18v-9h17v17h9v39H29V43z"></path>
+                  <path fill="#f5d960" d="M45 51h8v8h-8zm30 0h8v8h-8z"></path>
+                  <path fill="#f7d8dc" d="M59 66h8v6h-8z"></path>
+                  <path fill="#302b28" d="M55 73h16v5H55z"></path>
+                </svg>
+              </div>
+              <img class="profile-avatar__image" id="profile-avatar-image" alt="" hidden>
+              <button class="profile-avatar__edit" id="edit-avatar-button" type="button" aria-label="Change profile picture">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M4 8h3l1.5-2h7L17 8h3v11H4z"></path>
+                  <circle cx="12" cy="13" r="3.5"></circle>
+                </svg>
+              </button>
+              <input class="visually-hidden" id="avatar-file-input" type="file" accept="image/*">
+            </div>
+            <div class="profile-identity__text">
+              <h1 id="profile-display-name">sanj</h1>
+              <p id="profile-username">@sanjs4n</p>
+            </div>
+          </div>
+          <p class="profile-bio" id="profile-bio">born cool like that
+im a college student who loves fashion and loves to thrift!
+hop along for some cool tips lol</p>
+          <p class="profile-stats">
+            <span><strong>125</strong> Following</span>
+            <span><strong>578</strong> Followers</span>
+          </p>
+          <div class="profile-actions">
+            <button class="profile-edit-button" id="open-profile-editor" type="button">Edit Profile</button>
+            <button class="profile-logout-button" id="profile-logout-button" type="button">Log out</button>
+          </div>
+          <div class="profile-role">
+            <svg id="profile-role-icon" viewBox="0 0 32 32" aria-hidden="true">
+              <path d="M3 5h4l3 16h15l4-12H9"></path>
+              <circle cx="13" cy="26" r="2"></circle>
+              <circle cx="24" cy="26" r="2"></circle>
+            </svg>
+            <strong id="profile-role">Member</strong>
+          </div>
+        </div>
+
+        <aside class="profile-lookbook" aria-labelledby="lookbook-title">
+          <span class="washi-tape washi-tape--top-left" aria-hidden="true"></span>
+          <h2 id="lookbook-title">My Lookbook</h2>
+          <div class="profile-lookbook__photos">
+            <figure class="profile-polaroid profile-polaroid--left">
+              <img src="assets/profile-lookbook-outfit-1.png" alt="Outfit with a gray off-shoulder sweater and wide-leg jeans">
+            </figure>
+            <figure class="profile-polaroid profile-polaroid--right">
+              <img src="assets/profile-lookbook-outfit-2.png" alt="Outfit with a striped brown top, layered sleeves, and wide-leg jeans">
+            </figure>
+          </div>
+          <a class="profile-lookbook__button" href="my-closet.html">view lookbook</a>
+        </aside>
+      </section>
+
+      <section class="profile-posts" aria-labelledby="posts-title">
+        <header class="profile-posts__header">
+          <svg class="profile-posts__pin" viewBox="0 0 36 36" aria-hidden="true">
+            <path d="M13 4a8 8 0 0 1 11 11l-2 2 7 7-3 3-7-7-2 2A8 8 0 0 1 6 11l7 7 4-4z"></path>
+            <path d="m6 29 7-7"></path>
+          </svg>
+          <h2 id="posts-title">Posts</h2>
+          <a href="community.html">View all in Community <span aria-hidden="true">→</span></a>
+        </header>
+        <div class="profile-posts__divider"></div>
+
+        <div class="profile-post-list" id="profile-post-list">
+          <article class="profile-post" data-post-id="post-1" tabindex="0" aria-label="Open post: Fast Fashion brands are greedy">
+            <div class="profile-post__title-row">
+              <h3>Fast Fashion brands are greedy</h3>
+              <time datetime="2026-11-14">• Nov 14</time>
+            </div>
+            <p>dont you guys think fast fashion brands these are doing too much? like the skims advent calender was just not it they give low quality products and price them really high! we gotta do sth abt this</p>
+            <div class="profile-post__footer">
+              <div class="profile-post__counts">
+                <span aria-label="17 likes">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1.1L12 21l7.8-7.5 1.1-1.1a5.5 5.5 0 0 0-.1-7.8Z"></path></svg>
+                  <span class="post-like-count">17</span>
+                </span>
+                <span aria-label="4 comments">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11.5a8.5 8.5 0 0 1-12.8 7.3L3 20l1.2-4A8.5 8.5 0 1 1 20 11.5Z"></path></svg>
+                  <span class="post-comment-count">4</span>
+                </span>
+              </div>
+              <button class="profile-post__comment" type="button">Comment</button>
+            </div>
+          </article>
+
+          <article class="profile-post" data-post-id="post-2" tabindex="0" aria-label="Open post: i have a really bad stain on my white shirt!">
+            <div class="profile-post__title-row">
+              <h3>i have a really bad stain on my white shirt!</h3>
+              <time datetime="2026-11-09">• Nov 9</time>
+            </div>
+            <p>i have an oil stain on my white shirt and i need it for a formal event tmrw, what do i do? please help!!!</p>
+            <div class="profile-post__footer">
+              <div class="profile-post__counts">
+                <span aria-label="589 likes">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1.1L12 21l7.8-7.5 1.1-1.1a5.5 5.5 0 0 0-.1-7.8Z"></path></svg>
+                  <span class="post-like-count">589</span>
+                </span>
+                <span aria-label="15 comments">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11.5a8.5 8.5 0 0 1-12.8 7.3L3 20l1.2-4A8.5 8.5 0 1 1 20 11.5Z"></path></svg>
+                  <span class="post-comment-count">15</span>
+                </span>
+              </div>
+              <button class="profile-post__comment" type="button">Comment</button>
+            </div>
+          </article>
+        </div>
       </section>
     </main>
 
-    <script src="js/nav-auth.js"></script>
+    <dialog class="profile-dialog" id="profile-edit-dialog" aria-labelledby="profile-edit-title">
+      <form class="profile-dialog__form" id="profile-edit-form">
+        <button class="profile-dialog__close" type="button" data-close-dialog aria-label="Close dialog">×</button>
+        <h2 id="profile-edit-title">Edit Profile</h2>
+        <label for="edit-display-name">Display Name</label>
+        <input id="edit-display-name" name="displayName" type="text" maxlength="60" required>
+        <label for="edit-username">@username</label>
+        <input id="edit-username" name="username" type="text" maxlength="40" required>
+        <label for="edit-bio">Bio</label>
+        <textarea id="edit-bio" name="bio" rows="4" maxlength="300"></textarea>
+        <label for="edit-role">Role</label>
+        <select id="edit-role" name="role">
+          <option>Member</option>
+          <option>Student</option>
+          <option>Tailor / Designer</option>
+          <option>Seller</option>
+        </select>
+        <button class="profile-dialog__submit" type="submit">Save Profile</button>
+      </form>
+    </dialog>
+
+    <dialog class="profile-dialog profile-thread" id="post-dialog" aria-labelledby="thread-title">
+      <div class="profile-thread__content">
+        <button class="profile-dialog__close" type="button" data-close-dialog aria-label="Close dialog">×</button>
+        <p class="profile-thread__author"><span id="thread-username">@sanjs4n</span><span id="thread-date"></span></p>
+        <h2 id="thread-title"></h2>
+        <p class="profile-thread__body" id="thread-body"></p>
+        <div class="profile-thread__actions">
+          <button class="profile-thread__upvote" id="thread-upvote" type="button" aria-pressed="false">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1.1L12 21l7.8-7.5 1.1-1.1a5.5 5.5 0 0 0-.1-7.8Z"></path></svg>
+            <span id="thread-like-count">0</span>
+          </button>
+          <a href="community.html">Go to Community Feed <span aria-hidden="true">→</span></a>
+        </div>
+        <h3 class="profile-thread__comments-title">Comments <span id="thread-comment-count"></span></h3>
+        <ol class="profile-thread__comments" id="thread-comments"></ol>
+        <form class="profile-thread__comment-form" id="add-comment-form">
+          <label class="visually-hidden" for="new-comment">Add a comment</label>
+          <input id="new-comment" name="comment" type="text" maxlength="500" placeholder="Add a comment..." required>
+          <button type="submit">Post</button>
+        </form>
+      </div>
+    </dialog>
+
+    <p class="profile-toast" id="profile-toast" role="status" aria-live="polite"></p>
+    <script src="js/profile.js"></script>
   </body>
 </html>
