@@ -560,6 +560,8 @@ button {
 .home-footer {
   position: relative;
   background-color: #6B6638;
+  margin-bottom: -16px;
+  transform: translateY(-16px);
 }
 
 .home-footer__art {
