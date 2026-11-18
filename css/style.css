@@ -1331,7 +1331,6 @@ button {
 
 .profile-cover {
   position: relative;
-  z-index: 0;
   height: 220px;
   min-height: 220px;
   overflow: hidden;
