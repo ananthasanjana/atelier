@@ -21,7 +21,8 @@
         <a href="community.html">community</a>
         <a href="events.html">events</a>
       </nav>
-      <a class="atelier-profile-link profile-navbar-user" href="profile.html" aria-current="page">
+      <a class="atelier-login" href="login.html" id="nav-login-btn">login</a>
+      <a class="atelier-profile-link" href="profile.html" id="nav-profile-btn" aria-current="page" style="display: none;">
         <span class="atelier-avatar" aria-hidden="true">
           <svg viewBox="0 0 36 36">
             <circle cx="18" cy="12" r="5"></circle>
@@ -73,12 +74,13 @@
 im a college student who loves fashion and loves to thrift!
 hop along for some cool tips lol</p>
           <p class="profile-stats">
-            <span><strong>125</strong> Following</span>
-            <span><strong>578</strong> Followers</span>
+            <span><strong id="profile-following-count">125</strong> Following</span>
+            <span><strong id="profile-follower-count">578</strong> Followers</span>
           </p>
           <div class="profile-actions">
             <button class="profile-edit-button" id="open-profile-editor" type="button">Edit Profile</button>
             <button class="profile-logout-button" id="profile-logout-button" type="button">Log out</button>
+            <button class="profile-follow-button" id="profile-follow-button" type="button" hidden>Follow</button>
           </div>
           <div class="profile-role">
             <svg id="profile-role-icon" viewBox="0 0 32 32" aria-hidden="true">
@@ -92,7 +94,10 @@ hop along for some cool tips lol</p>
 
         <aside class="profile-lookbook" aria-labelledby="lookbook-title">
           <span class="washi-tape washi-tape--top-left" aria-hidden="true"></span>
-          <h2 id="lookbook-title">My Lookbook</h2>
+          <div class="profile-lookbook__heading">
+            <h2 id="lookbook-title">My Lookbook</h2>
+            <a class="profile-lookbook__posts-tab" href="#profile-posts">Posts</a>
+          </div>
           <div class="profile-lookbook__photos">
             <figure class="profile-polaroid profile-polaroid--left">
               <img src="assets/profile-lookbook-outfit-1.png" alt="Outfit with a gray off-shoulder sweater and wide-leg jeans">
@@ -105,7 +110,7 @@ hop along for some cool tips lol</p>
         </aside>
       </section>
 
-      <section class="profile-posts" aria-labelledby="posts-title">
+      <section class="profile-posts" id="profile-posts" aria-labelledby="posts-title">
         <header class="profile-posts__header">
           <svg class="profile-posts__pin" viewBox="0 0 36 36" aria-hidden="true">
             <path d="M13 4a8 8 0 0 1 11 11l-2 2 7 7-3 3-7-7-2 2A8 8 0 0 1 6 11l7 7 4-4z"></path>
@@ -176,6 +181,7 @@ hop along for some cool tips lol</p>
         <select id="edit-role" name="role">
           <option>Member</option>
           <option>Student</option>
+          <option>Tailor</option>
           <option>Tailor / Designer</option>
           <option>Seller</option>
         </select>
@@ -207,6 +213,9 @@ hop along for some cool tips lol</p>
     </dialog>
 
     <p class="profile-toast" id="profile-toast" role="status" aria-live="polite"></p>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/nav-auth.js"></script>
+    <script src="js/community-data.js"></script>
     <script src="js/profile.js"></script>
   </body>
 </html>

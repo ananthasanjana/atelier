@@ -72,13 +72,17 @@ document.addEventListener('DOMContentLoaded', () => {
     bio: 'born cool like that\nim a college student who loves fashion and loves to thrift!\nhop along for some cool tips lol',
     role: 'Member',
     avatarUrl: '',
-    coverUrl: ''
+    coverUrl: '',
+    followingCount: 125,
+    followersCount: 578
   };
-  const supportedRoles = ['Member', 'Student', 'Tailor / Designer', 'Seller'];
+  const supportedRoles = ['Member', 'Student', 'Tailor', 'Tailor / Designer', 'Seller'];
   const elements = {
     name: document.getElementById('profile-display-name'),
     username: document.getElementById('profile-username'),
     bio: document.getElementById('profile-bio'),
+    followingCount: document.getElementById('profile-following-count'),
+    followerCount: document.getElementById('profile-follower-count'),
     role: document.getElementById('profile-role'),
     roleIcon: document.getElementById('profile-role-icon'),
     avatar: document.getElementById('profile-avatar-image'),
@@ -97,6 +101,13 @@ document.addEventListener('DOMContentLoaded', () => {
     threadUpvote: document.getElementById('thread-upvote'),
     threadLikeCount: document.getElementById('thread-like-count'),
     postList: document.getElementById('profile-post-list'),
+    followButton: document.getElementById('profile-follow-button'),
+    editButton: document.getElementById('open-profile-editor'),
+    logoutButton: document.getElementById('profile-logout-button'),
+    bannerEditButton: document.getElementById('edit-banner-button'),
+    avatarEditButton: document.getElementById('edit-avatar-button'),
+    bannerFileInput: document.getElementById('banner-file-input'),
+    avatarFileInput: document.getElementById('avatar-file-input'),
     commentForm: document.getElementById('add-comment-form'),
     commentInput: document.getElementById('new-comment')
   };
@@ -132,7 +143,9 @@ document.addEventListener('DOMContentLoaded', () => {
         bio: typeof storedProfile.bio === 'string' ? storedProfile.bio : defaultProfile.bio,
         role: normalizeRole(storedProfile.role),
         avatarUrl: typeof storedProfile.avatarUrl === 'string' ? storedProfile.avatarUrl : '',
-        coverUrl: typeof storedProfile.coverUrl === 'string' ? storedProfile.coverUrl : ''
+        coverUrl: typeof storedProfile.coverUrl === 'string' ? storedProfile.coverUrl : '',
+        followingCount: readCount(storedProfile.followingCount, storedProfile.following, 125),
+        followersCount: readCount(storedProfile.followersCount, storedProfile.followerCount, 578)
       };
     } catch (error) {
       console.error('Unable to load the Atelier profile from localStorage.', error);
@@ -141,7 +154,110 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  let profile = loadProfile();
+  function readCount(primary, secondary, fallback) {
+    const value = Number(primary == null ? secondary : primary);
+    return Number.isFinite(value) && value >= 0 ? value : fallback;
+  }
+
+  function normalizeHandle(value) {
+    const text = String(value || '').trim().toLowerCase().replace(/^@/, '');
+    return (text.includes('@') ? text.split('@')[0] : text).replace(/[^a-z0-9._-]+/g, '');
+  }
+
+  function hasAuthenticatedUser() {
+    try {
+      const saved = JSON.parse(window.localStorage.getItem('atelierUser') || 'null');
+      return Boolean(
+        saved
+        && typeof saved === 'object'
+        && !Array.isArray(saved)
+        && ['name', 'username', 'email'].some((field) => (
+          typeof saved[field] === 'string' && saved[field].trim()
+        ))
+      );
+    } catch (error) {
+      console.error('Unable to verify the Atelier user session.', error);
+      return false;
+    }
+  }
+
+  function readStoredArray(key) {
+    try {
+      const value = JSON.parse(window.localStorage.getItem(key) || '[]');
+      return Array.isArray(value) ? value : [];
+    } catch (error) {
+      console.error(`Unable to read ${key} from browser storage.`, error);
+      return [];
+    }
+  }
+
+  function getLocalTailor(handle) {
+    const shops = [
+      ...readStoredArray('atelier_verified_tailors'),
+      ...readStoredArray('atelier_submitted_tailors')
+    ];
+    return shops.find((shop) => {
+      if (!shop || typeof shop !== 'object' || Array.isArray(shop)) {
+        return false;
+      }
+      const candidates = [shop.username, shop.handle, shop.slug, shop.name, shop.id];
+      return candidates.some((candidate) => normalizeHandle(candidate) === handle);
+    });
+  }
+
+  const viewerProfile = loadProfile();
+  const viewerIsAuthenticated = hasAuthenticatedUser();
+  const requestedUser = new URLSearchParams(window.location.search).get('user');
+  const requestedHandle = normalizeHandle(requestedUser);
+  const isPublicProfile = Boolean(requestedHandle);
+
+  function getPublicProfile(handle) {
+    const aliases = window.ATELIER_PUBLIC_PROFILE_ALIASES || {};
+    handle = aliases[handle] || handle;
+    if (
+      viewerIsAuthenticated
+      && normalizeHandle(viewerProfile.username) === handle
+    ) {
+      return { ...viewerProfile };
+    }
+
+    const profiles = window.ATELIER_PUBLIC_PROFILES || {};
+    const seeded = profiles[handle]
+      || Object.values(profiles).find((candidate) => (
+        normalizeHandle(candidate.name) === handle
+        || normalizeHandle(candidate.username) === handle
+      ));
+    const shop = getLocalTailor(handle);
+    if (shop) {
+      return {
+        ...(seeded || {}),
+        name: shop.name || (seeded && seeded.name) || handle,
+        username: `@${handle}`,
+        bio: shop.bio || (seeded && seeded.bio) || 'A local tailor listed by the Atelier community.',
+        role: shop.is_verified ? 'Verified Tailor' : 'Tailor',
+        avatarUrl: shop.image || (seeded && seeded.avatarUrl) || '',
+        coverUrl: shop.coverUrl || (seeded && seeded.coverUrl) || '',
+        followingCount: readCount(shop.followingCount, shop.following, 68),
+        followersCount: readCount(shop.followersCount, shop.followers, 0)
+      };
+    }
+    if (seeded) {
+      return { ...defaultProfile, ...seeded };
+    }
+
+    return {
+      ...defaultProfile,
+      name: handle || defaultProfile.name,
+      username: `@${handle}`,
+      bio: 'Atelier community member',
+      role: 'Member',
+      followingCount: 0,
+      followersCount: 0
+    };
+  }
+
+  let profile = isPublicProfile ? getPublicProfile(requestedHandle) : viewerProfile;
+  const publicHandle = isPublicProfile ? normalizeHandle(profile.username) : requestedHandle;
 
   function updateRoleIcon(role) {
     const icons = {
@@ -157,8 +273,24 @@ document.addEventListener('DOMContentLoaded', () => {
     elements.name.textContent = profile.name;
     elements.username.textContent = profile.username;
     elements.bio.textContent = profile.bio;
+    elements.followingCount.textContent = String(readCount(profile.followingCount, profile.following, 125));
+    elements.followerCount.textContent = String(readCount(profile.followersCount, profile.followerCount, 578));
     elements.role.textContent = profile.role;
     updateRoleIcon(profile.role);
+    document.body.classList.toggle('profile-page--public', isPublicProfile);
+    document.title = isPublicProfile ? `${profile.name} | Atelier` : 'Profile | Atelier';
+    elements.editButton.hidden = isPublicProfile;
+    elements.logoutButton.hidden = isPublicProfile;
+    elements.bannerEditButton.hidden = isPublicProfile;
+    elements.avatarEditButton.hidden = isPublicProfile;
+    elements.bannerFileInput.hidden = isPublicProfile;
+    elements.avatarFileInput.hidden = isPublicProfile;
+    elements.followButton.hidden = !isPublicProfile;
+    if (isPublicProfile) {
+      elements.followButton.disabled = false;
+      elements.followButton.textContent = 'Follow';
+      elements.followButton.setAttribute('aria-pressed', 'false');
+    }
     if (profile.avatarUrl) {
       elements.avatar.src = profile.avatarUrl;
       elements.avatar.alt = `Profile picture of ${profile.name}`;
@@ -178,6 +310,234 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  function getFollowingStorageKey() {
+    const viewerHandle = viewerProfile && viewerProfile.username ? viewerProfile.username : '@guest';
+    const key = normalizeHandle(viewerHandle).replace(/[^a-z0-9_-]/g, '-');
+    return `atelier_community_${key}_following`;
+  }
+
+  function renderFollowButton() {
+    if (!isPublicProfile) {
+      return;
+    }
+    if (!viewerIsAuthenticated) {
+      elements.followButton.textContent = 'Log in to follow';
+      elements.followButton.setAttribute('aria-pressed', 'false');
+      return;
+    }
+    if (normalizeHandle(viewerProfile.username) === publicHandle) {
+      elements.followButton.textContent = 'Your profile';
+      elements.followButton.disabled = true;
+      elements.followButton.setAttribute('aria-pressed', 'false');
+      return;
+    }
+    const following = readStoredArray(getFollowingStorageKey())
+      .map(normalizeHandle)
+      .includes(publicHandle);
+    elements.followButton.textContent = following ? 'Following' : 'Follow';
+    elements.followButton.classList.toggle('is-following', following);
+    elements.followButton.setAttribute('aria-pressed', String(following));
+  }
+
+  function normalizeCommunityPost(post) {
+    if (!post || typeof post !== 'object') {
+      return null;
+    }
+    const aliases = window.ATELIER_PUBLIC_PROFILE_ALIASES || {};
+    const postHandle = aliases[normalizeHandle(post.handle || post.author_handle)]
+      || normalizeHandle(post.handle || post.author_handle);
+    if (postHandle !== publicHandle) {
+      return null;
+    }
+    return {
+      ...post,
+      handle: post.handle || post.author_handle || `@${publicHandle}`,
+      author: post.author || post.author_name || profile.name,
+      content: String(post.content || ''),
+      likes: Number(post.likes || 0),
+      comments: Array.isArray(post.comments) ? post.comments : [],
+      images: Array.isArray(post.images)
+        ? post.images
+        : (post.image_url ? [{ src: post.image_url, alt: 'Image shared by the community' }] : [])
+    };
+  }
+
+  function collectPublicPosts(remotePosts) {
+    const allPosts = [...(window.ATELIER_COMMUNITY_POSTS || [])];
+    const storageHandle = publicHandle.replace(/[^a-z0-9_-]/g, '-');
+    const deletedIds = new Set(readStoredArray(`atelier_community_${storageHandle}_deleted`).map(String));
+    try {
+      for (let index = 0; index < window.localStorage.length; index += 1) {
+        const key = window.localStorage.key(index);
+        if (!key || !key.startsWith('atelier_community_') || !key.endsWith('_posts')) {
+          continue;
+        }
+        const saved = JSON.parse(window.localStorage.getItem(key) || '[]');
+        if (Array.isArray(saved)) {
+          allPosts.push(...saved);
+        }
+      }
+    } catch (error) {
+      console.error('Unable to collect community posts saved in this browser.', error);
+    }
+    allPosts.push(...(remotePosts || []));
+    const uniquePosts = new Map();
+    allPosts.forEach((post, index) => {
+      const normalized = normalizeCommunityPost(post);
+      if (normalized && !deletedIds.has(String(normalized.id))) {
+        uniquePosts.set(String(normalized.id || `${normalized.handle}-${index}`), normalized);
+      }
+    });
+    return [...uniquePosts.values()].sort((first, second) => {
+      const firstDate = new Date(first.createdAt || 0).getTime();
+      const secondDate = new Date(second.createdAt || 0).getTime();
+      return secondDate - firstDate;
+    });
+  }
+
+  function createPublicPostCard(post) {
+    const article = document.createElement('article');
+    article.className = 'profile-post profile-post--public';
+    const titleRow = document.createElement('div');
+    titleRow.className = 'profile-post__title-row';
+    const title = document.createElement('h3');
+    title.textContent = post.title || `A post from ${post.author}`;
+    const date = document.createElement('time');
+    date.textContent = post.timestamp || (post.createdAt
+      ? new Date(post.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+      : 'Recently shared');
+    titleRow.append(title, date);
+
+    const content = document.createElement('p');
+    content.textContent = post.content;
+    article.append(titleRow, content);
+
+    if (Array.isArray(post.tags) && post.tags.length) {
+      const tags = document.createElement('div');
+      tags.className = 'community-post__tags';
+      post.tags.forEach((value) => {
+        const tag = document.createElement('span');
+        tag.textContent = value;
+        tags.append(tag);
+      });
+      article.append(tags);
+    }
+
+    if (Array.isArray(post.images) && post.images.length) {
+      const gallery = document.createElement('div');
+      gallery.className = `community-post__gallery${post.images.length > 1 ? ' community-post__gallery--process' : ''}`;
+      post.images.slice(0, 3).forEach((item) => {
+        if (!item || !item.src) {
+          return;
+        }
+        const frame = document.createElement('figure');
+        frame.className = 'community-post__image-frame';
+        const image = document.createElement('img');
+        image.src = item.src;
+        image.alt = item.alt || 'Community post image';
+        image.loading = 'lazy';
+        frame.append(image);
+        if (item.label) {
+          const label = document.createElement('figcaption');
+          label.textContent = item.label;
+          frame.append(label);
+        }
+        gallery.append(frame);
+      });
+      if (gallery.childElementCount) {
+        article.append(gallery);
+      }
+    }
+
+    const footer = document.createElement('div');
+    footer.className = 'profile-post__footer profile-post__footer--public';
+    const counts = document.createElement('div');
+    counts.className = 'profile-post__counts';
+    const likes = document.createElement('span');
+    likes.textContent = `♡ ${Number(post.likes || 0)} likes`;
+    const comments = document.createElement('span');
+    comments.textContent = `◯ ${post.comments.length} comments`;
+    counts.append(likes, comments);
+    footer.append(counts);
+    article.append(footer);
+    return article;
+  }
+
+  function renderPublicPosts(remotePosts) {
+    const posts = collectPublicPosts(remotePosts);
+    elements.postList.replaceChildren();
+    if (!posts.length) {
+      const empty = document.createElement('p');
+      empty.className = 'profile-public-empty';
+      empty.textContent = 'No community posts from this profile yet.';
+      elements.postList.append(empty);
+      return;
+    }
+    posts.forEach((post) => elements.postList.append(createPublicPostCard(post)));
+  }
+
+  async function loadRemotePublicPosts() {
+    renderPublicPosts();
+    if (!window.supabase || typeof window.supabase.createClient !== 'function') {
+      return;
+    }
+    try {
+      const client = window.supabase.createClient(
+        'https://sktkevlfxjppfpjmxguy.supabase.co',
+        'sb_publishable_0jOs1sVk5nRJj1SY9VrgKw_Eoc08C0N'
+      );
+      const { data, error } = await client
+        .from('community_posts')
+        .select('id, author_name, author_handle, content, tags, image_url, likes, created_at')
+        .eq('author_handle', `@${publicHandle}`)
+        .order('created_at', { ascending: false })
+        .limit(100);
+      if (error) {
+        throw error;
+      }
+      const posts = (data || []).map((row) => ({
+        id: String(row.id),
+        author: row.author_name,
+        handle: row.author_handle,
+        content: row.content,
+        tags: Array.isArray(row.tags) ? row.tags : [],
+        image_url: row.image_url,
+        likes: Number(row.likes || 0),
+        createdAt: row.created_at,
+        timestamp: row.created_at
+          ? new Date(row.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+          : 'Recently shared'
+      }));
+      renderPublicPosts(posts);
+    } catch (error) {
+      console.warn('Public community posts could not be loaded from Supabase; showing posts saved in this browser.', error.message);
+    }
+  }
+
+  elements.followButton.addEventListener('click', () => {
+    if (!viewerIsAuthenticated) {
+      window.location.assign('login.html');
+      return;
+    }
+    if (normalizeHandle(viewerProfile.username) === publicHandle) {
+      return;
+    }
+    try {
+      const follows = new Set(readStoredArray(getFollowingStorageKey()).map(normalizeHandle));
+      if (follows.has(publicHandle)) {
+        follows.delete(publicHandle);
+      } else {
+        follows.add(publicHandle);
+      }
+      window.localStorage.setItem(getFollowingStorageKey(), JSON.stringify([...follows]));
+      renderFollowButton();
+      showProfileToast(follows.has(publicHandle) ? 'You are now following this profile.' : 'You unfollowed this profile.');
+    } catch (error) {
+      console.error('Unable to update the followed profiles list.', error);
+      showProfileToast('Could not update your following list. Check browser storage and try again.', 'error');
+    }
+  });
+
   function saveProfile(nextProfile) {
     try {
       window.localStorage.setItem('atelierUser', JSON.stringify(nextProfile));
@@ -190,6 +550,10 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   renderProfile();
+  renderFollowButton();
+  if (isPublicProfile) {
+    loadRemotePublicPosts();
+  }
 
   document.getElementById('profile-logout-button').addEventListener('click', () => {
     try {
@@ -470,7 +834,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   const initialPostId = window.location.hash.slice(1);
-  if (posts.has(initialPostId)) {
+  if (!isPublicProfile && posts.has(initialPostId)) {
     openPost(initialPostId);
   }
 });
