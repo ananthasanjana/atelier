@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#65613f">
+    <title>Your Atelier Bag | Atelier</title>
+    <link rel="stylesheet" href="css/style.css">
+  </head>
+  <body class="bg-graph-paper marketplace-page cart-page">
+    <header class="atelier-navbar marketplace-navbar">
+      <a class="atelier-brand" href="index.html" aria-label="Atelier home">
+        <span class="atelier-brand__name">Atelier</span>
+        <span class="atelier-brand__tagline">one cloth many paths</span>
+      </a>
+      <nav class="atelier-nav-links" aria-label="Main navigation">
+        <a href="index.html">home</a>
+        <a href="my-closet.html">my closet</a>
+        <a href="tailors.html">tailors</a>
+        <a href="marketplace.html">marketplace</a>
+        <a href="community.html">community</a>
+        <a href="events.html">events</a>
+      </nav>
+      <div class="marketplace-navbar__actions">
+        <a class="marketplace-nav-icon" href="marketplace.html#wishlist" aria-label="View wishlist">
+          <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M20.8 8.7c0 5.2-8.8 10.1-8.8 10.1S3.2 13.9 3.2 8.7A4.4 4.4 0 0 1 12 6.4a4.4 4.4 0 0 1 8.8 2.3Z"></path></svg>
+          <span class="marketplace-count" id="nav-wishlist-count">0</span>
+        </a>
+        <a class="marketplace-nav-icon" href="cart.html" aria-label="Shopping bag">
+          <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 8h14l1 12H4L5 8Z"></path><path d="M9 9V6a3 3 0 0 1 6 0v3"></path></svg>
+          <span class="marketplace-count" id="nav-cart-count">0</span>
+        </a>
+        <a class="atelier-login" href="login.html" id="nav-login-btn">login</a>
+        <a class="atelier-profile-link" href="profile.html" id="nav-profile-btn" style="display: none;">
+          <span class="atelier-avatar" aria-hidden="true">
+            <svg viewBox="0 0 36 36"><circle cx="18" cy="12" r="5"></circle><path d="M8 29c0-6 4-9 10-9s10 3 10 9"></path></svg>
+          </span>
+          <span>Profile</span>
+        </a>
+      </div>
+    </header>
+
+    <main class="cart-shell">
+      <div class="cart-layout">
+        <section class="cart-main-column" aria-labelledby="cart-heading">
+          <header class="cart-page-header">
+            <div>
+              <p class="marketplace-eyebrow">Good finds, better stories</p>
+              <h1 id="cart-heading">Your Shopping Bag</h1>
+            </div>
+            <a class="cart-back-link" href="marketplace.html">← Continue Shopping</a>
+          </header>
+
+          <div class="cart-tabs" role="tablist" aria-label="Your bag and saved items">
+            <button type="button" class="cart-tab is-active" id="bag-tab" role="tab" aria-selected="true" aria-controls="bag-panel">
+              Your Atelier Bag <span id="cart-count">0</span>
+            </button>
+            <button type="button" class="cart-tab" id="wishlist-tab" role="tab" aria-selected="false" aria-controls="wishlist-panel">
+              Saved Wishlist <span id="wishlist-count">0</span>
+            </button>
+          </div>
+
+          <section class="cart-tab-panel" id="bag-panel" role="tabpanel" aria-labelledby="bag-tab">
+            <div class="cart-items" id="cart-items" aria-label="Items in your shopping bag"></div>
+            <div class="cart-empty" id="cart-empty" hidden>
+              <span class="cart-empty__doodle" aria-hidden="true">♡ ✿ ♡</span>
+              <h2>Your bag is taking a little breather</h2>
+              <p>There are so many lovely, one-of-a-kind finds waiting for you.</p>
+              <a class="marketplace-list-button cart-explore-button" href="marketplace.html">Explore Marketplace</a>
+            </div>
+          </section>
+
+          <section class="cart-tab-panel" id="wishlist-panel" role="tabpanel" aria-labelledby="wishlist-tab" hidden>
+            <div class="cart-wishlist-items" id="wishlist-items"></div>
+            <div class="cart-empty cart-empty--wishlist" id="wishlist-empty" hidden>
+              <span class="cart-empty__doodle" aria-hidden="true">✧ ♡ ✧</span>
+              <h2>Your saved finds will live here</h2>
+              <p>Tap the heart on anything you’d like to come back to.</p>
+              <a class="marketplace-list-button cart-explore-button" href="marketplace.html">Explore Marketplace</a>
+            </div>
+          </section>
+
+          <section class="cart-confirmation" id="order-confirmation" role="status" hidden>
+            <span class="cart-confirmation__sparkle" aria-hidden="true">✧</span>
+            <p class="marketplace-eyebrow">A little note from Atelier</p>
+            <h2>Your order request is in!</h2>
+            <p id="confirmation-detail"></p>
+            <p class="cart-confirmation__order" id="confirmation-order"></p>
+            <div class="cart-order-sellers" id="order-seller-payments"></div>
+            <a href="marketplace.html#bought">View Bought Items in Marketplace →</a>
+          </section>
+        </section>
+
+        <aside class="cart-summary" aria-labelledby="summary-heading">
+          <p class="marketplace-eyebrow">A thoughtful little parcel</p>
+          <h2 id="summary-heading">Order Summary</h2>
+          <div class="cart-login-gate" id="cart-login-gate" role="note" hidden>
+            <p>Log in to place an order and view seller UPI payment details</p>
+            <a class="marketplace-primary-button" id="cart-login-link" href="login.html">Log in to Checkout →</a>
+          </div>
+          <div class="cart-summary__line"><span>Subtotal</span><strong id="cart-subtotal">₹0</strong></div>
+
+          <fieldset class="cart-delivery-options">
+            <legend>Local Hyderabad Delivery / Campus Pickup</legend>
+            <label class="cart-delivery-choice is-selected">
+              <input type="radio" name="delivery" value="pickup" checked>
+              <span><strong>Hyderabad Pickup</strong><small>Free — coordinate a local hand-off in Hyderabad</small></span>
+              <b>Free</b>
+            </label>
+            <label class="cart-delivery-choice">
+              <input type="radio" name="delivery" value="courier">
+              <span><strong>Standard courier</strong><small>Delivered to your Hyderabad address</small></span>
+              <b>₹50</b>
+            </label>
+          </fieldset>
+
+          <label class="cart-note-label" for="delivery-note">Delivery / Pickup Note</label>
+          <textarea id="delivery-note" rows="3" maxlength="240" placeholder="Neighborhood or campus drop-off spot…"></textarea>
+
+          <div class="cart-summary__line cart-summary__line--total">
+            <span>Total</span><strong id="cart-total">₹0</strong>
+          </div>
+          <button type="button" class="marketplace-primary-button cart-place-order" id="complete-purchase">Place Order (COD / UPI Request)</button>
+          <p class="cart-message" id="cart-message" role="status"></p>
+          <p class="cart-summary__note">UPI and WhatsApp payment details appear after you place your order.</p>
+        </aside>
+      </div>
+    </main>
+
+    <script src="js/nav-auth.js"></script>
+    <script src="js/atelier-auth.js"></script>
+    <script src="js/marketplace-data.js"></script>
+    <script src="js/cart.js"></script>
+  </body>
+</html>

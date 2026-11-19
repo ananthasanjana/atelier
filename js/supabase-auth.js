@@ -91,7 +91,10 @@
         role
       }));
       window.localStorage.removeItem('atelierPendingRole');
-      window.location.assign('profile.html');
+      const destination = window.atelierAuth
+        ? window.atelierAuth.consumeRedirectAfterLogin('profile.html')
+        : 'profile.html';
+      window.location.assign(destination);
     } catch (error) {
       console.error('Unable to finish Google sign-in.', error);
       feedback.textContent = `Could not finish Google sign-in: ${error.message}`;

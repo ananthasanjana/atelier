@@ -213,7 +213,21 @@ document.addEventListener('DOMContentLoaded', () => {
     elements.profileFollowerCount.textContent = String(profile.followersCount);
     elements.profileAvatar.replaceWith(makeAvatar(
       profile.name,
-      profile.avatarUrl || 'assets/community-sanj-avatar.svg',
+      profile.avatarUrl || 'assets/profile-avatar-fallback.svg',
+      'community-avatar--profile'
+    ));
+    elements.profileAvatar = document.querySelector('.community-avatar--profile');
+  }
+
+  function refreshProfileAvatar() {
+    if (!isLoggedIn) return;
+    const savedProfile = readProfile();
+    if (!savedProfile) return;
+
+    profile.avatarUrl = savedProfile.avatarUrl;
+    elements.profileAvatar.replaceWith(makeAvatar(
+      profile.name,
+      profile.avatarUrl || 'assets/profile-avatar-fallback.svg',
       'community-avatar--profile'
     ));
     elements.profileAvatar = document.querySelector('.community-avatar--profile');
@@ -1081,6 +1095,10 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   initializeProfile();
+  window.addEventListener('pageshow', refreshProfileAvatar);
+  window.addEventListener('storage', (event) => {
+    if (event.key === 'atelierUser') refreshProfileAvatar();
+  });
   initializeSupabase();
   renderSuggestions();
   renderFeed();

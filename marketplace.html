@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#65613f">
+    <title>Marketplace | Atelier</title>
+    <link rel="stylesheet" href="css/style.css">
+  </head>
+  <body class="bg-graph-paper marketplace-page">
+    <header class="atelier-navbar marketplace-navbar">
+      <a class="atelier-brand" href="index.html" aria-label="Atelier home">
+        <span class="atelier-brand__name">Atelier</span>
+        <span class="atelier-brand__tagline">one cloth many paths</span>
+      </a>
+      <nav class="atelier-nav-links" aria-label="Main navigation">
+        <a href="index.html">home</a>
+        <a href="my-closet.html">my closet</a>
+        <a href="tailors.html">tailors</a>
+        <a href="marketplace.html" aria-current="page">marketplace</a>
+        <a href="community.html">community</a>
+        <a href="events.html">events</a>
+      </nav>
+      <div class="marketplace-navbar__actions">
+        <a class="marketplace-nav-icon" href="#wishlist" aria-label="View wishlist">
+          <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M20.8 8.7c0 5.2-8.8 10.1-8.8 10.1S3.2 13.9 3.2 8.7A4.4 4.4 0 0 1 12 6.4a4.4 4.4 0 0 1 8.8 2.3Z"></path></svg><span class="marketplace-count" id="nav-wishlist-count">0</span>
+        </a>
+        <a class="marketplace-nav-icon" href="cart.html" aria-label="Shopping bag">
+          <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 8h14l1 12H4L5 8Z"></path><path d="M9 9V6a3 3 0 0 1 6 0v3"></path></svg><span class="marketplace-count" id="nav-cart-count">0</span>
+        </a>
+        <a class="atelier-login" href="login.html" id="nav-login-btn">login</a>
+        <a class="atelier-profile-link" href="profile.html" id="nav-profile-btn" style="display: none;">
+          <span class="atelier-avatar" aria-hidden="true">
+            <svg viewBox="0 0 36 36"><circle cx="18" cy="12" r="5"></circle><path d="M8 29c0-6 4-9 10-9s10 3 10 9"></path></svg>
+          </span>
+          <span>Profile</span>
+        </a>
+      </div>
+    </header>
+
+    <main class="marketplace-shell">
+      <nav class="marketplace-categories" aria-label="Shop by category">
+        <button class="marketplace-category is-active" type="button" data-quick-category="all"><span>✿</span>All Finds</button>
+        <button class="marketplace-category" type="button" data-quick-category="crochet"><span>〰</span>Crochet</button>
+        <button class="marketplace-category" type="button" data-quick-category="accessories"><span>♡</span>Accessories</button>
+        <button class="marketplace-category" type="button" data-quick-category="small-business"><span>✧</span>Small Biz</button>
+        <button class="marketplace-category" type="button" data-quick-category="local-artisan"><span>⌂</span>Local Artisans</button>
+        <button class="marketplace-category" type="button" data-quick-category="upcycled"><span>↻</span>Upcycled</button>
+        <button class="marketplace-category" type="button" data-quick-category="thrift"><span>✿</span>Thrift</button>
+      </nav>
+
+      <div class="marketplace-layout">
+        <aside class="marketplace-sidebar" aria-label="Marketplace filters">
+          <button class="marketplace-list-button" type="button" id="open-listing">＋ List an Item</button>
+          <label class="marketplace-search">
+            <span class="sr-only">Search items</span>
+            <input id="market-search" type="search" placeholder="Search crochet, bags, tops..." autocomplete="off">
+          </label>
+
+          <section class="marketplace-filter-group">
+            <h2>My Shopping &amp; Activity</h2>
+            <div class="marketplace-activity" role="group" aria-label="Shopping activity">
+              <button type="button" class="is-active" data-activity="all">Browse All <span id="count-all">0</span></button>
+              <button type="button" data-activity="wishlist" data-auth-only hidden>Wishlisted Items <span id="count-wishlist">0</span></button>
+              <button type="button" data-activity="bought" data-auth-only hidden>Bought Items <span id="count-bought">0</span></button>
+              <button type="button" data-activity="listings" data-auth-only hidden>My Listings <span id="count-listings">0</span></button>
+              <a href="cart.html">View Cart <span aria-hidden="true">→</span></a>
+              <a class="marketplace-auth-track" id="market-auth-track" href="login.html" hidden>Log in to track your orders &amp; wishlist</a>
+            </div>
+          </section>
+
+          <section class="marketplace-filter-group">
+            <h2>Categories</h2>
+            <label><input type="checkbox" value="small-business" data-filter="seller"> Small Business</label>
+            <label><input type="checkbox" value="local-artisan" data-filter="seller"> Local Artisan</label>
+            <label><input type="checkbox" value="crochet" data-filter="tag"> Handmade Crochet</label>
+            <label><input type="checkbox" value="thrift" data-filter="tag"> Thrift Finds</label>
+            <label><input type="checkbox" value="upcycled" data-filter="tag"> Upcycled</label>
+          </section>
+
+          <section class="marketplace-filter-group">
+            <h2>Price range</h2>
+            <div class="marketplace-prices" role="group" aria-label="Price range">
+              <button type="button" data-price="0-300">Under ₹300</button>
+              <button type="button" data-price="300-600">₹300 – ₹600</button>
+              <button type="button" data-price="600-1000">₹600 – ₹1,000</button>
+              <button type="button" data-price="1000-plus">₹1,000+</button>
+            </div>
+          </section>
+        </aside>
+
+        <section class="marketplace-results" aria-label="Marketplace items">
+          <header class="marketplace-results__heading">
+            <div><p class="marketplace-eyebrow">Good finds, better stories</p><h1>Made to be found</h1></div>
+            <p id="marketplace-result-count" aria-live="polite"></p>
+          </header>
+          <div class="marketplace-grid" id="marketplace-grid" aria-live="polite"></div>
+          <p class="marketplace-empty" id="marketplace-empty" hidden>No items match those filters yet. Try another search.</p>
+        </section>
+      </div>
+    </main>
+
+    <aside class="marketplace-auth-prompt" id="market-auth-prompt" role="status" aria-live="polite" hidden>
+      <button class="marketplace-auth-prompt__close" type="button" id="close-market-auth-prompt" aria-label="Dismiss login prompt">×</button>
+      <span class="marketplace-auth-prompt__doodle" aria-hidden="true">♡ ✧</span>
+      <p id="market-auth-message">Log in to add items to your bag or list pieces!</p>
+      <a class="marketplace-primary-button" id="market-auth-login" href="login.html">Log in to Continue →</a>
+    </aside>
+
+    <dialog class="marketplace-dialog" id="quick-view-dialog" aria-labelledby="quick-view-title">
+      <button class="marketplace-dialog__close" type="button" data-close-dialog aria-label="Close">×</button>
+      <div id="quick-view-content"></div>
+    </dialog>
+
+    <dialog class="marketplace-dialog marketplace-dialog--listing" id="listing-dialog" aria-labelledby="listing-title">
+      <button class="marketplace-dialog__close" type="button" data-close-dialog aria-label="Close">×</button>
+      <form id="listing-form">
+        <p class="marketplace-eyebrow">Your story belongs here</p>
+        <h2 id="listing-title">List an item</h2>
+        <label>Item title<input name="title" required maxlength="90"></label>
+        <div class="marketplace-form-row">
+          <label>Category
+            <select name="category" required>
+              <option value="Accessories">Accessories</option><option value="Crochet">Crochet</option>
+              <option value="Small Biz">Small Biz</option><option value="Local Artisan">Local Artisan</option>
+              <option value="Upcycled">Upcycled</option><option value="Thrift">Thrift</option>
+            </select>
+          </label>
+          <label>Seller type
+            <select name="sellerType" required><option>Small Business</option><option>Local Artisan</option><option>Thrift Finds</option></select>
+          </label>
+        </div>
+        <label>Price (₹)<input name="price" type="number" min="1" step="1" required></label>
+        <label>Description<textarea name="description" rows="3" maxlength="400" required></textarea></label>
+        <label>Seller UPI ID<input name="upiId" type="text" placeholder="e.g., name@okaxis" maxlength="100" required></label>
+        <label>WhatsApp Number or Instagram Handle<input name="contact" type="text" placeholder="e.g., +91 98765 43210 or @handle" maxlength="100" required></label>
+        <label class="marketplace-upload">Photo
+          <input name="photo" id="listing-photo" type="file" accept="image/*" required>
+          <span id="listing-photo-label">Choose a photo</span>
+        </label>
+        <img class="marketplace-upload-preview" id="listing-preview" alt="Selected item preview" hidden>
+        <button class="marketplace-primary-button" type="submit">Preview &amp; list item</button>
+        <p class="marketplace-form-message" id="listing-message" role="status"></p>
+      </form>
+    </dialog>
+
+    <script src="js/nav-auth.js"></script>
+    <script src="js/atelier-auth.js"></script>
+    <script src="js/marketplace-data.js"></script>
+    <script src="js/marketplace.js"></script>
+  </body>
+</html>
