@@ -7,6 +7,20 @@
 
   function getUser() {
     try {
+      if (window.atelierSupabase) {
+        const profile = window.atelierSupabase.readCachedProfile();
+        if (profile) {
+          return {
+            ...profile,
+            name: profile.display_name,
+            displayName: profile.display_name,
+            avatarUrl: profile.avatar_url,
+            coverUrl: profile.banner_url,
+            role: window.atelierSupabase.displayRole(profile.role)
+          };
+        }
+      }
+
       if (window.localStorage.getItem(initializedKey) !== 'true') {
         window.localStorage.removeItem('atelierUser');
         window.localStorage.setItem(initializedKey, 'true');
@@ -51,11 +65,12 @@
 
       const destination = new URL(saved, window.location.href);
       const currentDirectory = window.location.pathname.slice(0, window.location.pathname.lastIndexOf('/') + 1);
-      const allowedPages = [`${currentDirectory}marketplace.html`, `${currentDirectory}cart.html`];
       if (
         destination.protocol === window.location.protocol
         && destination.host === window.location.host
-        && allowedPages.includes(destination.pathname)
+        && destination.pathname.startsWith(currentDirectory)
+        && destination.pathname.endsWith('.html')
+        && !['login.html', 'signup.html'].includes(destination.pathname.slice(currentDirectory.length))
       ) {
         return destination.href;
       }

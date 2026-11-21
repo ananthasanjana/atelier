@@ -38,7 +38,6 @@
         <div class="profile-cover__meadow" id="profile-cover-fallback" aria-hidden="true"></div>
         <img class="profile-cover__image" id="profile-cover-image" alt="" hidden>
         <button class="profile-cover__edit" id="edit-banner-button" type="button">Edit Banner</button>
-        <input class="visually-hidden" id="banner-file-input" type="file" accept="image/*">
       </section>
 
       <section class="profile-upper" aria-label="Profile and lookbook">
@@ -53,7 +52,6 @@
                   <circle cx="12" cy="13" r="3.5"></circle>
                 </svg>
               </button>
-              <input class="visually-hidden" id="avatar-file-input" type="file" accept="image/*">
             </div>
             <div class="profile-identity__text">
               <h1 id="profile-display-name">sanj</h1>
@@ -63,6 +61,7 @@
           <p class="profile-bio" id="profile-bio">born cool like that
 im a college student who loves fashion and loves to thrift!
 hop along for some cool tips lol</p>
+          <p class="profile-role-details" id="profile-role-details" hidden></p>
           <p class="profile-stats">
             <span><strong id="profile-following-count">125</strong> Following</span>
             <span><strong id="profile-follower-count">578</strong> Followers</span>
@@ -82,25 +81,15 @@ hop along for some cool tips lol</p>
           </div>
         </div>
 
-        <aside class="profile-lookbook" aria-labelledby="lookbook-title">
-          <span class="washi-tape washi-tape--top-left" aria-hidden="true"></span>
-          <div class="profile-lookbook__heading">
-            <h2 id="lookbook-title">My Lookbook</h2>
-            <a class="profile-lookbook__posts-tab" href="#profile-posts">Posts</a>
-          </div>
-          <div class="profile-lookbook__photos">
-            <figure class="profile-polaroid profile-polaroid--left">
-              <img src="assets/profile-lookbook-outfit-1.png" alt="Outfit with a gray off-shoulder sweater and wide-leg jeans">
-            </figure>
-            <figure class="profile-polaroid profile-polaroid--right">
-              <img src="assets/profile-lookbook-outfit-2.png" alt="Outfit with a striped brown top, layered sleeves, and wide-leg jeans">
-            </figure>
-          </div>
-          <a class="profile-lookbook__button" href="my-closet.html">view lookbook</a>
-        </aside>
       </section>
 
-      <section class="profile-posts" id="profile-posts" aria-labelledby="posts-title">
+      <nav class="profile-content-tabs" aria-label="Profile sections">
+        <button type="button" class="is-active" data-profile-tab="posts" aria-selected="true">Posts</button>
+        <button type="button" data-profile-tab="listings" aria-selected="false">Listings</button>
+        <button type="button" data-profile-tab="lookbook" aria-selected="false">Lookbook</button>
+      </nav>
+
+      <section class="profile-posts profile-tab-panel" id="profile-posts" data-profile-panel="posts" aria-labelledby="posts-title">
         <header class="profile-posts__header">
           <svg class="profile-posts__pin" viewBox="0 0 36 36" aria-hidden="true">
             <path d="M13 4a8 8 0 0 1 11 11l-2 2 7 7-3 3-7-7-2 2A8 8 0 0 1 6 11l7 7 4-4z"></path>
@@ -155,6 +144,26 @@ hop along for some cool tips lol</p>
           </article>
         </div>
       </section>
+
+      <section class="profile-listings profile-tab-panel" id="profile-listings" data-profile-panel="listings" aria-labelledby="listings-title" hidden>
+        <header class="profile-posts__header">
+          <h2 id="listings-title">Listings</h2>
+          <a href="marketplace.html">Browse Marketplace <span aria-hidden="true">→</span></a>
+        </header>
+        <div class="profile-listing-grid" id="profile-listing-grid"></div>
+      </section>
+
+      <section class="profile-lookbook-gallery profile-tab-panel" id="profile-lookbook" data-profile-panel="lookbook" aria-labelledby="profile-lookbook-title" hidden>
+        <header class="profile-posts__header">
+          <div>
+            <h2 id="profile-lookbook-title">Lookbook</h2>
+            <p>Styled outfits from this Atelier member.</p>
+          </div>
+          <a id="profile-lookbook-manage" href="my-closet.html" hidden>+ Add to Lookbook <span aria-hidden="true">→</span></a>
+        </header>
+        <div class="profile-lookbook-gallery__grid" id="profile-lookbook-grid"></div>
+      </section>
+
     </main>
 
     <dialog class="profile-dialog" id="profile-edit-dialog" aria-labelledby="profile-edit-title">
@@ -169,13 +178,25 @@ hop along for some cool tips lol</p>
         <textarea id="edit-bio" name="bio" rows="4" maxlength="300"></textarea>
         <label for="edit-role">Role</label>
         <select id="edit-role" name="role">
-          <option>Member</option>
-          <option>Student</option>
-          <option>Tailor</option>
-          <option>Tailor / Designer</option>
-          <option>Seller</option>
+          <option value="member">Member</option>
+          <option value="tailor">Tailor / Designer</option>
+          <option value="seller">Seller</option>
         </select>
-        <button class="profile-dialog__submit" type="submit">Save Profile</button>
+        <label for="edit-role-neighborhood">Neighborhood (optional)</label>
+        <input id="edit-role-neighborhood" name="neighborhood" type="text" maxlength="80">
+        <label for="edit-role-specialty">Specialty (optional)</label>
+        <input id="edit-role-specialty" name="specialty" type="text" maxlength="120">
+        <label for="edit-role-upi">Seller UPI ID (optional)</label>
+        <input id="edit-role-upi" name="upi_id" type="text" maxlength="100">
+        <label for="edit-role-whatsapp">WhatsApp (optional)</label>
+        <input id="edit-role-whatsapp" name="whatsapp" type="text" maxlength="40">
+        <label for="edit-avatar-file">Profile Picture</label>
+        <input id="edit-avatar-file" name="avatarFile" type="file" accept="image/*">
+        <img class="profile-edit-preview" id="edit-avatar-preview" alt="Profile picture preview" hidden>
+        <label for="edit-banner-file">Cover Banner</label>
+        <input id="edit-banner-file" name="bannerFile" type="file" accept="image/*">
+        <img class="profile-edit-preview profile-edit-preview--banner" id="edit-banner-preview" alt="Cover banner preview" hidden>
+        <button class="profile-dialog__submit" type="submit">Save Changes</button>
       </form>
     </dialog>
 
@@ -204,6 +225,8 @@ hop along for some cool tips lol</p>
 
     <p class="profile-toast" id="profile-toast" role="status" aria-live="polite"></p>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/atelier-supabase.js"></script>
+    <script src="js/atelier-auth.js"></script>
     <script src="js/nav-auth.js"></script>
     <script src="js/community-data.js"></script>
     <script src="js/profile.js"></script>

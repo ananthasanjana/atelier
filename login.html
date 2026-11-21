@@ -42,8 +42,8 @@
             <input
               id="login-identity"
               name="identity"
-              type="text"
-              autocomplete="username"
+              type="email"
+              autocomplete="email"
               required
             >
           </div>
@@ -85,59 +85,45 @@
     </main>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/atelier-supabase.js"></script>
     <script src="js/atelier-auth.js"></script>
     <script src="js/supabase-auth.js"></script>
     <script>
       (() => {
         const form = document.getElementById('login-form');
         const feedback = document.getElementById('login-feedback');
-        const identityInput = document.getElementById('login-identity');
         const googleButton = document.getElementById('google-login');
 
-        function makeUsername(value) {
-          const localPart = value.trim().replace(/^@/, '').split('@')[0];
-          const slug = localPart
-            .normalize('NFKD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .toLowerCase()
-            .replace(/[^a-z0-9]+/g, '-')
-            .replace(/^-+|-+$/g, '');
-          return `@${slug || 'atelier-member'}`;
-        }
-
-        function displayNameFromUsername(username) {
-          return username
-            .slice(1)
-            .replace(/[._-]+/g, ' ')
-            .split(' ')
-            .filter(Boolean)
-            .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-            .join(' ') || 'Atelier Member';
-        }
-
-        function saveAndContinue(user) {
+        async function finishLogin(user) {
           try {
-            window.localStorage.setItem('atelierUser', JSON.stringify(user));
+            await window.atelierSupabase.cacheAuthenticatedProfile(user, { createIfMissing: true });
+            const destination = window.atelierAuth.consumeRedirectAfterLogin('profile.html');
+            window.location.assign(destination);
           } catch (error) {
-            console.error('Unable to save the demo user in localStorage.', error);
-            feedback.textContent = 'Could not save your demo profile. Please enable browser storage and try again.';
-            return;
+            console.error('Unable to load the Atelier profile after login.', error);
+            feedback.textContent = `Login succeeded, but your profile could not be loaded: ${error.message}`;
           }
-
-          const destination = window.atelierAuth
-            ? window.atelierAuth.consumeRedirectAfterLogin('profile.html')
-            : 'profile.html';
-          window.location.assign(destination);
         }
 
-        form.addEventListener('submit', (event) => {
+        form.addEventListener('submit', async (event) => {
           event.preventDefault();
-          const username = makeUsername(identityInput.value);
-          saveAndContinue({
-            name: displayNameFromUsername(username),
-            username,
-            role: 'Member / Student'
-          });
+          const submitButton = form.querySelector('[type="submit"]');
+          submitButton.disabled = true;
+          feedback.textContent = 'Signing in...';
+          try {
+            const { data, error } = await window.atelierSupabase.getClient().auth.signInWithPassword({
+              email: document.getElementById('login-identity').value.trim(),
+              password: document.getElementById('login-password').value
+            });
+            if (error) throw error;
+            if (!data.user) throw new Error('Supabase did not return a user.');
+            await finishLogin(data.user);
+          } catch (error) {
+            console.error('Email and password login failed.', error);
+            feedback.textContent = error.message || 'Login failed. Check your email and password.';
+          } finally {
+            submitButton.disabled = false;
+          }
         });
 
         googleButton.addEventListener('click', () => {
@@ -148,9 +134,7 @@
           window.atelierGoogleAuth.start('Member / Student', feedback, googleButton);
         });
 
-        if (window.atelierGoogleAuth) {
-          window.atelierGoogleAuth.complete(feedback);
-        }
+        window.atelierGoogleAuth.complete(feedback);
       })();
     </script>
     <script src="js/nav-auth.js"></script>

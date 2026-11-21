@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#6B6638">
+    <title>My Digital Closet | Atelier</title>
+    <link rel="stylesheet" href="css/style.css">
+  </head>
+  <body class="bg-graph-paper my-closet-page">
+    <header class="atelier-navbar marketplace-navbar">
+      <a class="atelier-brand" href="index.html" aria-label="Atelier home">
+        <span class="atelier-brand__name">Atelier</span>
+        <span class="atelier-brand__tagline">one cloth many paths</span>
+      </a>
+      <nav class="atelier-nav-links" aria-label="Main navigation">
+        <a href="index.html">home</a>
+        <a href="my-closet.html" aria-current="page">my closet</a>
+        <a href="tailors.html">tailors</a>
+        <a href="marketplace.html">marketplace</a>
+        <a href="community.html">community</a>
+        <a href="events.html">events</a>
+      </nav>
+      <div class="marketplace-navbar__actions">
+        <a class="atelier-login" href="login.html" id="nav-login-btn">login</a>
+        <a class="atelier-profile-link" href="profile.html" id="nav-profile-btn" style="display: none;">
+          <span class="atelier-avatar" aria-hidden="true">
+            <svg viewBox="0 0 36 36"><circle cx="18" cy="12" r="5"></circle><path d="M8 29c0-6 4-9 10-9s10 3 10 9"></path></svg>
+          </span>
+          <span>Profile</span>
+        </a>
+      </div>
+    </header>
+
+    <main class="my-closet-shell">
+      <section class="closet-auth-gate" id="closet-auth-gate" hidden aria-labelledby="closet-gate-title">
+        <span class="closet-auth-gate__doodle" aria-hidden="true">✧ ♡ ✧</span>
+        <p class="closet-eyebrow">YOUR CLOTHES, MORE POSSIBILITIES</p>
+        <h1 id="closet-gate-title">Log in to unlock your Digital Closet &amp; AI Circular Stylist</h1>
+        <p>Save the pieces you own, make new outfit combinations, and give every garment a longer life.</p>
+        <a class="closet-button closet-button--olive" id="closet-login-link" href="login.html">Log in to Continue <span aria-hidden="true">→</span></a>
+      </section>
+
+      <div class="closet-loading" id="closet-loading" role="status">Opening your digital closet…</div>
+
+      <div class="closet-app" id="closet-app" hidden>
+        <div class="closet-workspace">
+          <nav class="closet-view-nav" aria-label="Digital closet tools">
+            <button type="button" class="is-active" data-closet-view="generator" aria-pressed="true">Outfit Generator</button>
+            <button type="button" data-closet-view="saved" aria-pressed="false">Saved Outfits</button>
+            <button type="button" data-closet-view="lookbook" aria-pressed="false">Lookbook</button>
+          </nav>
+
+          <div class="closet-view-content">
+            <section class="closet-view-panel" id="closet-generator-panel" data-closet-view-panel="generator" aria-labelledby="outfit-title">
+              <section class="closet-outfit-banner" aria-labelledby="outfit-title">
+                <div class="closet-outfit-art">
+                  <p class="closet-eyebrow">TODAY'S OUTFIT IDEA</p>
+                  <svg class="closet-outfit-arrow" viewBox="0 0 90 60" aria-hidden="true"><path d="M5 45c19-32 48-38 70-20"></path><path d="m66 17 10 8 4-12"></path></svg>
+                  <div class="closet-outfit-preview" id="outfit-preview" aria-live="polite"></div>
+                </div>
+                <div class="closet-outfit-tools">
+                  <h2 id="outfit-title">Outfit Mix-and-Match Generator</h2>
+                  <div class="closet-vibes" role="group" aria-label="Choose an outfit vibe">
+                    <button type="button" class="is-selected" data-vibe="All Vibes" aria-pressed="true">All Vibes</button>
+                    <button type="button" data-vibe="College Casual" aria-pressed="false">College Casual</button>
+                    <button type="button" data-vibe="Rainy Day" aria-pressed="false">Rainy Day</button>
+                    <button type="button" data-vibe="Festive / Brunch" aria-pressed="false">Festive / Brunch</button>
+                  </div>
+                  <div class="closet-outfit-buttons">
+                    <button type="button" class="closet-button closet-button--pink closet-generate-button" id="generate-outfit">Generate New Look! <span aria-hidden="true">✨</span></button>
+                    <button type="button" class="closet-button closet-button--save-outfit" id="save-outfit" disabled>♡ Save Outfit</button>
+                  </div>
+                  <p class="closet-note-box" id="outfit-note" aria-live="polite">A thoughtful mix can make old favorites feel brand new.</p>
+                </div>
+                <svg class="closet-hanger-doodle" viewBox="0 0 48 48" aria-hidden="true"><path d="M21 13a4 4 0 1 1 6 3.5c-2 1.1-3 2-3 4v2"></path><path d="m5 33 19-11 19 11a2 2 0 0 1-1 4H7a2 2 0 0 1-2-4Z"></path></svg>
+              </section>
+            </section>
+
+            <section class="closet-view-panel closet-saved-lookbook" id="saved-outfits-section" data-closet-view-panel="saved" aria-labelledby="saved-outfits-title" hidden>
+              <header class="closet-view-heading">
+                <div>
+                  <p class="closet-eyebrow">YOUR PRIVATE STYLE FILE</p>
+                  <h2 id="saved-outfits-title">My Saved Outfits <span class="closet-saved-count" id="saved-outfits-count">0</span></h2>
+                </div>
+              </header>
+              <div class="closet-saved-lookbook__list" id="saved-outfits-list"></div>
+            </section>
+
+            <section class="closet-view-panel closet-lookbook-panel" id="closet-lookbook-panel" data-closet-view-panel="lookbook" aria-labelledby="closet-lookbook-title" hidden>
+              <header class="closet-view-heading closet-lookbook-heading">
+                <div>
+                  <p class="closet-eyebrow">REAL LOOKS, YOUR WAY</p>
+                  <h2 id="closet-lookbook-title">My Outfit Lookbook</h2>
+                  <p>Upload real photos of your styled outfits to showcase on your Atelier profile.</p>
+                </div>
+                <button type="button" class="closet-button closet-button--pink" id="open-lookbook-upload">+ Upload Outfit Photo</button>
+              </header>
+              <p class="closet-inline-status" id="lookbook-status" role="status" aria-live="polite"></p>
+              <div class="closet-lookbook-grid" id="closet-lookbook-grid"></div>
+            </section>
+          </div>
+        </div>
+
+        <section class="closet-panel closet-digital-panel" aria-labelledby="digital-closet-title">
+          <svg class="closet-sparkle closet-sparkle--left" viewBox="0 0 42 42" aria-hidden="true"><path d="M21 3 24.5 16.5 38 21l-13.5 4.5L21 39l-4.5-13.5L3 21l13.5-4.5L21 3Z"></path></svg>
+          <svg class="closet-sparkle closet-sparkle--right" viewBox="0 0 42 42" aria-hidden="true"><path d="M21 3 24.5 16.5 38 21l-13.5 4.5L21 39l-4.5-13.5L3 21l13.5-4.5L21 3Z"></path><circle cx="34" cy="7" r="2"></circle></svg>
+
+          <header class="closet-panel-heading">
+            <div class="closet-heading-copy">
+              <p class="closet-eyebrow">AI PERSONAL STYLIST · YOUR PIECES, YOUR WAY</p>
+              <h1 id="digital-closet-title">Your Digital Closet</h1>
+            </div>
+            <div class="closet-heading-actions">
+              <span class="closet-item-count" id="closet-item-count">0 pieces</span>
+              <button type="button" class="closet-button closet-button--pink closet-add-button" id="open-closet-upload">+ Add Piece</button>
+            </div>
+          </header>
+
+          <nav class="closet-category-tabs" id="closet-category-tabs" aria-label="Filter closet by category">
+            <button type="button" class="is-selected" data-category="All" aria-pressed="true">All</button>
+            <button type="button" data-category="Tops &amp; Shirts" aria-pressed="false">Tops &amp; Shirts</button>
+            <button type="button" data-category="Bottoms" aria-pressed="false">Bottoms</button>
+            <button type="button" data-category="Dresses" aria-pressed="false">Dresses</button>
+            <button type="button" data-category="Outerwear" aria-pressed="false">Outerwear</button>
+            <button type="button" data-category="Accessories" aria-pressed="false">Accessories</button>
+            <button type="button" data-category="Footwear" aria-pressed="false">Footwear</button>
+          </nav>
+
+          <div class="closet-grid" id="closet-grid" aria-label="Your clothing items"></div>
+          <p class="closet-inline-status" id="closet-storage-status" role="status" aria-live="polite"></p>
+        </section>
+      </div>
+    </main>
+
+    <p class="closet-toast" id="closet-toast" role="status" aria-live="polite" hidden></p>
+
+    <button type="button" class="closet-chat-launcher" id="closet-chat-launcher" aria-expanded="false" aria-controls="closet-chat" hidden>
+      <span aria-hidden="true">♻️</span> Circular Care AI
+    </button>
+    <section class="closet-chat" id="closet-chat" role="dialog" aria-labelledby="closet-chat-title" aria-modal="false" hidden>
+      <header class="closet-chat__header">
+        <div>
+          <p>ATELIER</p>
+          <h2 id="closet-chat-title">Atelier Circular Stylist <span aria-hidden="true">♻️</span></h2>
+        </div>
+        <button type="button" class="closet-chat__close" id="closet-chat-close" aria-label="Close care chat">×</button>
+      </header>
+      <div class="closet-chat__tools">
+        <label class="visually-hidden" for="closet-chat-picker">Choose a closet item</label>
+        <select id="closet-chat-picker">
+          <option value="">Pick a closet piece (optional)</option>
+        </select>
+        <div class="closet-chat__prompts" aria-label="Quick care questions">
+          <button type="button" data-prompt="How do I wash this fabric?">How do I wash this fabric?</button>
+          <button type="button" data-prompt="Fix a small tear / fraying">Fix a small tear / fraying</button>
+          <button type="button" data-prompt="Remove a stubborn stain">Remove a stubborn stain</button>
+          <button type="button" data-prompt="Repair, Upcycle, or Donate?">Repair, Upcycle, or Donate?</button>
+        </div>
+      </div>
+      <div class="closet-chat__messages" id="closet-chat-messages" aria-live="polite" aria-relevant="additions text">
+        <p class="closet-chat__bubble closet-chat__bubble--assistant">Hi! Choose a closet piece or ask me about a fabric, repair, or a more circular next step.</p>
+      </div>
+      <form class="closet-chat__form" id="closet-chat-form">
+        <label class="visually-hidden" for="closet-chat-input">Ask the circular stylist</label>
+        <input id="closet-chat-input" type="text" maxlength="400" placeholder="Ask about care or a repair…" autocomplete="off" required>
+        <button type="submit" aria-label="Send message">Send <span aria-hidden="true">→</span></button>
+      </form>
+    </section>
+
+    <dialog class="closet-upload-dialog" id="closet-upload-dialog" aria-labelledby="closet-upload-title">
+      <form class="closet-upload-form" id="closet-upload-form">
+        <button type="button" class="closet-dialog-close" id="close-closet-upload" aria-label="Close upload form">×</button>
+        <p class="closet-eyebrow">A NEW FAVORITE</p>
+        <h2 id="closet-upload-title">Add a piece to your closet</h2>
+        <label class="closet-photo-input" for="closet-photo">
+          <span id="closet-photo-label">Choose a clothing photo</span>
+          <img id="closet-photo-preview" alt="Preview of the selected clothing item" hidden>
+        </label>
+        <input id="closet-photo" name="photo" type="file" accept="image/*">
+        <label for="closet-nickname">Item Nickname</label>
+        <input id="closet-nickname" name="nickname" type="text" maxlength="60" required placeholder="e.g., vintage yellow tee">
+        <label for="closet-category">Category</label>
+        <select id="closet-category" name="category">
+          <option>Tops &amp; Shirts</option>
+          <option>Bottoms</option>
+          <option>Dresses</option>
+          <option>Outerwear</option>
+          <option>Accessories</option>
+          <option>Footwear</option>
+        </select>
+        <div class="closet-upload-fields">
+          <div>
+            <label for="closet-new-fabric">Fabric</label>
+            <select id="closet-new-fabric" name="fabric">
+              <option>Cotton</option>
+              <option>Denim</option>
+              <option>Wool</option>
+              <option>Wool / Knit</option>
+              <option>Silk</option>
+              <option>Silk / Satin</option>
+              <option>Linen</option>
+              <option>Polyester</option>
+              <option>Leather</option>
+              <option>Fabric unconfirmed</option>
+            </select>
+          </div>
+          <div>
+            <label for="closet-new-condition">Condition</label>
+            <select id="closet-new-condition" name="condition">
+              <option>Great</option>
+              <option>Fraying Hem / Cuffs</option>
+              <option>Small Tear or Hole</option>
+              <option>Stubborn Stain</option>
+              <option>Loose Button / Broken Zip</option>
+            </select>
+          </div>
+        </div>
+        <p class="closet-upload-status" id="closet-upload-status" role="status" aria-live="polite"></p>
+        <button type="submit" class="closet-button closet-button--olive" id="save-closet-item">Save to My Closet</button>
+      </form>
+    </dialog>
+
+    <dialog class="closet-upload-dialog" id="lookbook-upload-dialog" aria-labelledby="lookbook-upload-title">
+      <form class="closet-upload-form" id="lookbook-upload-form">
+        <button type="button" class="closet-dialog-close" id="close-lookbook-upload" aria-label="Close lookbook form">×</button>
+        <p class="closet-eyebrow">A LOOK WORTH KEEPING</p>
+        <h2 id="lookbook-upload-title">Upload an outfit photo</h2>
+        <label class="closet-photo-input" for="lookbook-photo">
+          <span id="lookbook-photo-label">Choose an outfit photo</span>
+          <img id="lookbook-photo-preview" alt="Preview of your outfit photo" hidden>
+        </label>
+        <input id="lookbook-photo" name="photo" type="file" accept="image/*" required>
+        <label for="lookbook-outfit-title">Outfit Title</label>
+        <input id="lookbook-outfit-title" name="title" type="text" maxlength="80" required placeholder="e.g., Rainy Day Denim &amp; Knit">
+        <label for="lookbook-vibe">Vibe / Occasion</label>
+        <select id="lookbook-vibe" name="vibe" required>
+          <option>College Casual</option>
+          <option>Festive / Brunch</option>
+          <option>Thrifted Fit</option>
+          <option>Upcycled Look</option>
+        </select>
+        <label for="lookbook-caption">Styling Caption <span>(optional)</span></label>
+        <textarea id="lookbook-caption" name="caption" rows="3" maxlength="500" placeholder="What makes this look feel like you?"></textarea>
+        <p class="closet-upload-status" id="lookbook-upload-status" role="status" aria-live="polite"></p>
+        <button type="submit" class="closet-button closet-button--olive" id="save-lookbook-entry">Save to My Lookbook</button>
+      </form>
+    </dialog>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/atelier-supabase.js"></script>
+    <script src="js/atelier-auth.js"></script>
+    <script src="js/nav-auth.js"></script>
+    <script src="js/my-closet.js"></script>
+  </body>
+</html>

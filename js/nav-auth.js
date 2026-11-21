@@ -1,77 +1,74 @@
 document.addEventListener('DOMContentLoaded', () => {
   const loginButton = document.getElementById('nav-login-btn');
   const profileButton = document.getElementById('nav-profile-btn');
+  if (!loginButton || !profileButton) return;
 
-  if (!loginButton || !profileButton) {
-    return;
+  const avatar = profileButton.querySelector('.atelier-avatar');
+  const label = profileButton.querySelector('span:last-child');
+
+  function render(user) {
+    const loggedIn = Boolean(user && user.username);
+    loginButton.style.display = loggedIn ? 'none' : 'inline-flex';
+    profileButton.style.display = loggedIn ? 'inline-flex' : 'none';
+    if (!loggedIn) return;
+
+    profileButton.title = user.display_name || user.name || `@${user.username}`;
+    label.textContent = `@${String(user.username).replace(/^@/, '')}`;
+    avatar.replaceChildren();
+    const imageUrl = user.avatar_url || user.avatarUrl;
+    if (imageUrl) {
+      const image = document.createElement('img');
+      image.src = imageUrl;
+      image.alt = '';
+      avatar.append(image);
+    } else {
+      const fallback = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      fallback.setAttribute('viewBox', '0 0 36 36');
+      fallback.setAttribute('aria-hidden', 'true');
+      fallback.innerHTML = '<circle cx="18" cy="12" r="5"></circle><path d="M8 29c0-6 4-9 10-9s10 3 10 9"></path>';
+      avatar.append(fallback);
+    }
+
+    const profileTitle = document.getElementById('profile-title');
+    const profileMessage = document.getElementById('profile-message');
+    const profileRole = document.getElementById('profile-role');
+    const profileLoginLink = document.getElementById('profile-login-link');
+    const profileLogoutButton = document.getElementById('profile-logout-btn');
+    if (profileTitle) profileTitle.textContent = `Welcome, ${user.display_name || user.name || user.username}`;
+    if (profileMessage) profileMessage.textContent = 'Your Atelier profile is ready.';
+    if (profileRole) profileRole.textContent = window.atelierSupabase.displayRole(user.role);
+    if (profileLoginLink) profileLoginLink.style.display = 'none';
+    if (profileLogoutButton) profileLogoutButton.style.display = 'inline-flex';
   }
 
-  let user = null;
+  render(window.atelierSupabase.readCachedProfile());
+  window.addEventListener('atelier:profile-updated', (event) => render(event.detail));
+  window.addEventListener('storage', (event) => {
+    if (event.key === 'atelier_current_user' || event.key === 'atelierUser') {
+      render(window.atelierSupabase.readCachedProfile());
+    }
+  });
+
   try {
-    const sessionInitializationKey = 'atelierSessionInitialized';
-    if (window.localStorage.getItem(sessionInitializationKey) !== 'true') {
-      window.localStorage.removeItem('atelierUser');
-      window.localStorage.setItem(sessionInitializationKey, 'true');
-    }
-
-    const storedUser = window.localStorage.getItem('atelierUser');
-    if (storedUser) {
-      const parsedUser = JSON.parse(storedUser);
-      if (
-        parsedUser
-        && typeof parsedUser === 'object'
-        && !Array.isArray(parsedUser)
-        && ['name', 'username', 'email'].some(
-          (field) => typeof parsedUser[field] === 'string' && parsedUser[field].trim()
-        )
-      ) {
-        user = parsedUser;
-      } else {
-        console.error('The stored Atelier user session has an invalid shape.');
-      }
-    }
-  } catch (error) {
-    console.error('Unable to read the Atelier user session.', error);
-  }
-
-  const isLoggedIn = Boolean(user);
-
-  loginButton.style.display = isLoggedIn ? 'none' : 'inline-flex';
-  profileButton.style.display = isLoggedIn ? 'inline-flex' : 'none';
-
-  const profileTitle = document.getElementById('profile-title');
-  const profileMessage = document.getElementById('profile-message');
-  const profileRole = document.getElementById('profile-role');
-  const profileLoginLink = document.getElementById('profile-login-link');
-  const profileLogoutButton = document.getElementById('profile-logout-btn');
-  if (profileTitle && isLoggedIn) {
-    profileTitle.textContent = `Welcome, ${user.name || user.username || user.email}`;
-  }
-  if (profileMessage) {
-    profileMessage.textContent = isLoggedIn
-      ? 'Your Atelier profile is ready.'
-      : 'Please log in to view your profile.';
-  }
-  if (profileRole && isLoggedIn && typeof user.role === 'string') {
-    profileRole.textContent = user.role;
-  }
-  if (profileLoginLink) {
-    profileLoginLink.style.display = isLoggedIn ? 'none' : 'inline';
-  }
-  if (profileLogoutButton) {
-    profileLogoutButton.style.display = isLoggedIn ? 'inline-flex' : 'none';
-    profileLogoutButton.addEventListener('click', () => {
-      try {
+    window.atelierSupabase.getClient().auth.getSession().then(async ({ data, error }) => {
+      if (error) throw error;
+      if (!data.session) {
+        window.localStorage.removeItem('atelier_current_user');
         window.localStorage.removeItem('atelierUser');
-      } catch (error) {
-        console.error('Unable to clear the Atelier user session.', error);
-        if (profileMessage) {
-          profileMessage.textContent = 'Could not log out. Please check your browser storage settings and try again.';
-        }
+        window.localStorage.setItem('atelierSessionInitialized', 'true');
+        render(null);
         return;
       }
-
-      window.location.assign('login.html');
+      const profile = await window.atelierSupabase.cacheAuthenticatedProfile(data.session.user, {
+        createIfMissing: true
+      });
+      render(profile);
+    }).catch((error) => {
+      console.error('Unable to verify the Atelier navbar session.', error);
+      render(window.atelierSupabase.readCachedProfile());
     });
+  } catch (error) {
+    console.error('Unable to initialize the Atelier navbar session.', error);
+    render(window.atelierSupabase.readCachedProfile());
   }
 });

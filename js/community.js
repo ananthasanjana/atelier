@@ -1,8 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
   const CLOUDINARY_CLOUD_NAME = 'lify0b3k';
   const CLOUDINARY_UPLOAD_PRESET = 'atelier_unsigned';
-  const SUPABASE_URL = 'https://sktkevlfxjppfpjmxguy.supabase.co';
-  const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_0jOs1sVk5nRJj1SY9VrgKw_Eoc08C0N';
   const SEED_POSTS = window.ATELIER_COMMUNITY_POSTS || [];
   const SUGGESTIONS = window.ATELIER_COMMUNITY_MAKERS || [];
   const FORUM_SEEDS = [
@@ -87,7 +85,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function readProfile() {
     try {
-      const saved = JSON.parse(window.localStorage.getItem('atelierUser') || 'null');
+      const saved = JSON.parse(
+        window.localStorage.getItem('atelier_current_user')
+        || window.localStorage.getItem('atelierUser')
+        || 'null'
+      );
       if (
         !saved
         || typeof saved !== 'object'
@@ -99,10 +101,12 @@ document.addEventListener('DOMContentLoaded', () => {
         return null;
       }
       return {
-        name: String(saved.displayName || saved.name || saved.username || saved.email),
+        name: String(saved.display_name || saved.displayName || saved.name || saved.username || saved.email),
         username: normalizeHandle(saved.username || saved.email),
         role: /tailor/i.test(String(saved.role || '')) ? 'Tailor' : 'Member',
-        avatarUrl: typeof saved.avatarUrl === 'string' ? saved.avatarUrl : '',
+        avatarUrl: typeof saved.avatar_url === 'string'
+          ? saved.avatar_url
+          : (typeof saved.avatarUrl === 'string' ? saved.avatarUrl : ''),
         followingCount: readCount(saved.followingCount, saved.following, 125),
         followersCount: readCount(saved.followersCount, saved.followerCount, 578)
       };
@@ -234,11 +238,15 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function initializeSupabase() {
-    if (!window.supabase || typeof window.supabase.createClient !== 'function') {
+    if (!window.atelierSupabase) {
       console.info('Supabase is unavailable; the community will use the local feed.');
       return;
     }
-    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+    try {
+      supabaseClient = window.atelierSupabase.getClient();
+    } catch (error) {
+      console.error('Unable to initialize the community Supabase client.', error);
+    }
   }
 
   function makeActionButton(action, label, icon, active) {

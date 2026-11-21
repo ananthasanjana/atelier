@@ -40,12 +40,25 @@
         <form class="auth-form auth-form--signup" id="signup-form">
           <div class="auth-grid">
             <div class="auth-field">
-              <label for="signup-name">Name</label>
+              <label for="signup-name">Display Name</label>
               <input
                 id="signup-name"
                 name="name"
                 type="text"
                 autocomplete="name"
+                required
+              >
+            </div>
+            <div class="auth-field">
+              <label for="signup-username">Username</label>
+              <input
+                id="signup-username"
+                name="username"
+                type="text"
+                autocomplete="username"
+                pattern="[a-zA-Z0-9_]{3,30}"
+                minlength="3"
+                maxlength="30"
                 required
               >
             </div>
@@ -83,9 +96,9 @@
           <div class="auth-field">
             <label for="signup-role">I am a...</label>
             <select class="auth-select" id="signup-role" name="role">
-              <option value="Member / Student">Member / Student</option>
-              <option value="Tailor / Designer">Tailor / Designer</option>
-              <option value="Seller">Seller</option>
+              <option value="member">Member</option>
+              <option value="tailor">Tailor / Designer</option>
+              <option value="seller">Seller</option>
             </select>
           </div>
           <label class="auth-consent" for="terms-consent">
@@ -116,12 +129,14 @@
     </main>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/atelier-supabase.js"></script>
     <script src="js/atelier-auth.js"></script>
     <script src="js/supabase-auth.js"></script>
     <script>
       (() => {
         const form = document.getElementById('signup-form');
         const nameInput = document.getElementById('signup-name');
+        const usernameInput = document.getElementById('signup-username');
         const emailInput = document.getElementById('signup-email');
         const passwordInput = document.getElementById('signup-password');
         const repeatPasswordInput = document.getElementById('repeat-password');
@@ -132,96 +147,108 @@
         const claimShopName = (claimParams.get('shop') || '').trim();
         const isTailorClaim = claimParams.get('role') === 'tailor' && Boolean(claimShopName);
 
-        function makeUsername(value) {
-          const slug = value
-            .trim()
-            .normalize('NFKD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .toLowerCase()
-            .replace(/[^a-z0-9]+/g, '-')
-            .replace(/^-+|-+$/g, '');
-          return `@${slug || 'atelier-member'}`;
+        function cleanUsername(value) {
+          return window.atelierSupabase.normalizeUsername(value);
         }
 
-        function saveAndContinue(user) {
-          let previousUser = null;
+        function saveClaimedShop() {
+          if (!isTailorClaim) return;
           let previousVerifiedShops = null;
-          let verifiedShopsChanged = false;
           try {
-            previousUser = window.localStorage.getItem('atelierUser');
-            if (isTailorClaim) {
-              const storedShops = window.localStorage.getItem('atelier_verified_tailors');
-              previousVerifiedShops = storedShops;
-              const shops = storedShops ? JSON.parse(storedShops) : [];
-              if (!Array.isArray(shops)) {
-                throw new Error('The saved verified tailor list is not a list.');
-              }
-              const latitudeValue = claimParams.get('lat');
-              const longitudeValue = claimParams.get('lng');
-              const latitude = Number(latitudeValue);
-              const longitude = Number(longitudeValue);
-              if (
-                latitudeValue
-                && longitudeValue
-                && Number.isFinite(latitude)
-                && Number.isFinite(longitude)
-                && latitude >= -90
-                && latitude <= 90
-                && longitude >= -180
-                && longitude <= 180
-              ) {
-                const osmType = claimParams.get('osm_type') || '';
-                const osmId = claimParams.get('osm_id') || '';
-                const slug = claimShopName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-                const id = osmType && osmId
-                  ? `osm-${osmType}-${osmId}`
-                  : `claim-${slug}-${latitude.toFixed(4)}-${longitude.toFixed(4)}`;
-                const claimedShop = {
-                  id,
-                  name: claimShopName,
-                  area: claimParams.get('area') || 'Hyderabad',
-                  lat: latitude,
-                  lng: longitude,
-                  phone: claimParams.get('phone') || '',
-                  is_verified: true,
-                  source: 'claimed'
-                };
-                const updatedShops = [...shops.filter((shop) => shop && shop.id !== id), claimedShop];
-                window.localStorage.setItem('atelier_verified_tailors', JSON.stringify(updatedShops));
-                verifiedShopsChanged = true;
-              }
+            const storedShops = window.localStorage.getItem('atelier_verified_tailors');
+            previousVerifiedShops = storedShops;
+            const shops = storedShops ? JSON.parse(storedShops) : [];
+            if (!Array.isArray(shops)) throw new Error('The saved verified tailor list is not a list.');
+            const latitudeValue = claimParams.get('lat');
+            const longitudeValue = claimParams.get('lng');
+            const latitude = Number(latitudeValue);
+            const longitude = Number(longitudeValue);
+            if (
+              latitudeValue && longitudeValue
+              && Number.isFinite(latitude) && Number.isFinite(longitude)
+              && latitude >= -90 && latitude <= 90
+              && longitude >= -180 && longitude <= 180
+            ) {
+              const osmType = claimParams.get('osm_type') || '';
+              const osmId = claimParams.get('osm_id') || '';
+              const slug = claimShopName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+              const id = osmType && osmId
+                ? `osm-${osmType}-${osmId}`
+                : `claim-${slug}-${latitude.toFixed(4)}-${longitude.toFixed(4)}`;
+              const claimedShop = {
+                id,
+                name: claimShopName,
+                area: claimParams.get('area') || 'Hyderabad',
+                lat: latitude,
+                lng: longitude,
+                phone: claimParams.get('phone') || '',
+                is_verified: true,
+                source: 'claimed'
+              };
+              window.localStorage.setItem(
+                'atelier_verified_tailors',
+                JSON.stringify([...shops.filter((shop) => shop && shop.id !== id), claimedShop])
+              );
             }
-            window.localStorage.setItem('atelierUser', JSON.stringify(user));
           } catch (error) {
-            console.error('Unable to save the signup profile or claimed tailor.', error);
-            if (verifiedShopsChanged) {
-              try {
-                if (previousVerifiedShops === null) {
-                  window.localStorage.removeItem('atelier_verified_tailors');
-                } else {
-                  window.localStorage.setItem('atelier_verified_tailors', previousVerifiedShops);
-                }
-              } catch (rollbackError) {
-                console.error('Unable to restore the previous verified tailor list.', rollbackError);
-              }
-            }
+            console.error('Unable to save the claimed tailor listing.', error);
             try {
-              if (previousUser === null) {
-                window.localStorage.removeItem('atelierUser');
+              if (previousVerifiedShops === null) {
+                window.localStorage.removeItem('atelier_verified_tailors');
               } else {
-                window.localStorage.setItem('atelierUser', previousUser);
+                window.localStorage.setItem('atelier_verified_tailors', previousVerifiedShops);
               }
             } catch (rollbackError) {
-              console.error('Unable to restore the previous signup profile.', rollbackError);
+              console.error('Unable to restore the previous verified tailor list.', rollbackError);
             }
-            feedback.textContent = 'Could not save your signup details. Please enable browser storage and try again.';
+          }
+        }
+
+        async function signUp() {
+          const displayName = nameInput.value.trim();
+          const username = cleanUsername(usernameInput.value);
+          const role = roleInput.value;
+          if (!displayName || username.length < 3) {
+            feedback.textContent = 'Enter a display name and a username with at least 3 letters, numbers, or underscores.';
             return;
           }
 
-          const destination = window.atelierAuth
-            ? window.atelierAuth.consumeRedirectAfterLogin('profile.html')
-            : 'profile.html';
-          window.location.assign(destination);
+          const submitButton = form.querySelector('[type="submit"]');
+          submitButton.disabled = true;
+          feedback.textContent = 'Creating your Atelier account...';
+          try {
+            const { data, error } = await window.atelierSupabase.getClient().auth.signUp({
+              email: emailInput.value.trim(),
+              password: passwordInput.value,
+              options: {
+                data: {
+                  display_name: displayName,
+                  username,
+                  role,
+                  terms_accepted: 'true'
+                }
+              }
+            });
+            if (error) throw error;
+            if (!data.user) throw new Error('Supabase did not return a user after signup.');
+
+            const { data: profile, error: profileError } = await window.atelierSupabase.getClient()
+              .from('profiles')
+              .select('*')
+              .eq('id', data.user.id)
+              .single();
+            if (profileError) throw profileError;
+            profile.email = data.user.email || '';
+            window.atelierSupabase.cacheProfile(profile);
+            saveClaimedShop();
+            const destination = window.atelierAuth.consumeRedirectAfterLogin('profile.html');
+            window.location.assign(destination);
+          } catch (error) {
+            console.error('Atelier signup failed.', error);
+            feedback.textContent = `Could not complete signup: ${error.message}`;
+          } finally {
+            submitButton.disabled = false;
+          }
         }
 
         function validatePasswordMatch() {
@@ -234,6 +261,14 @@
 
         passwordInput.addEventListener('input', validatePasswordMatch);
         repeatPasswordInput.addEventListener('input', validatePasswordMatch);
+        usernameInput.addEventListener('input', () => {
+          const start = usernameInput.selectionStart;
+          const cleaned = usernameInput.value.toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 30);
+          if (cleaned !== usernameInput.value) {
+            usernameInput.value = cleaned;
+            usernameInput.setSelectionRange(Math.min(start, cleaned.length), Math.min(start, cleaned.length));
+          }
+        });
 
         form.addEventListener('submit', (event) => {
           event.preventDefault();
@@ -241,13 +276,7 @@
           if (!form.reportValidity()) {
             return;
           }
-
-          saveAndContinue({
-            name: nameInput.value.trim(),
-            username: makeUsername(nameInput.value),
-            email: emailInput.value.trim(),
-            role: roleInput.value
-          });
+          signUp();
         });
 
         googleButton.addEventListener('click', () => {
@@ -258,9 +287,7 @@
           window.atelierGoogleAuth.start(roleInput.value, feedback, googleButton);
         });
 
-        if (window.atelierGoogleAuth) {
-          window.atelierGoogleAuth.complete(feedback);
-        }
+        window.atelierGoogleAuth.complete(feedback);
       })();
     </script>
     <script>
@@ -271,7 +298,7 @@
         const roleInput = document.getElementById('signup-role');
         const shopName = (params.get('shop') || '').trim();
         const claimBanner = document.getElementById('signup-claim-banner');
-        roleInput.value = 'Tailor / Designer';
+        roleInput.value = 'tailor';
         if (shopName) {
           claimBanner.textContent = `Claiming shop: ${shopName} — Complete signup to verify your listing.`;
           claimBanner.hidden = false;

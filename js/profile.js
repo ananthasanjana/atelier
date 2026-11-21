@@ -1,6 +1,3 @@
-const CLOUDINARY_CLOUD_NAME = 'lify0b3k';
-const CLOUDINARY_UPLOAD_PRESET = 'atelier_unsigned';
-
 let toastTimeout;
 
 function showProfileToast(message, kind) {
@@ -18,31 +15,6 @@ function showProfileToast(message, kind) {
       toast.classList.remove('is-visible');
     }, 2600);
   }
-}
-
-async function uploadToCloudinary(file) {
-  const formData = new FormData();
-  formData.append('file', file);
-  formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
-  showProfileToast('Uploading...', 'loading');
-
-  const response = await fetch(
-    `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
-    { method: 'POST', body: formData }
-  );
-  const data = await response.json();
-
-  if (!response.ok) {
-    const errorMessage = data && data.error && data.error.message;
-    throw new Error(typeof errorMessage === 'string'
-      ? errorMessage
-      : 'Cloudinary could not upload this image.');
-  }
-  if (!data || typeof data.secure_url !== 'string' || !data.secure_url) {
-    throw new Error('Cloudinary did not return a secure image URL.');
-  }
-
-  return data.secure_url;
 }
 
 function readFileAsDataUrl(file) {
@@ -68,6 +40,7 @@ function readFileAsDataUrl(file) {
 document.addEventListener('DOMContentLoaded', () => {
   const defaultProfile = {
     name: 'sanj',
+    id: '',
     username: '@sanjs4n',
     bio: 'born cool like that\nim a college student who loves fashion and loves to thrift!\nhop along for some cool tips lol',
     role: 'Member',
@@ -85,6 +58,7 @@ document.addEventListener('DOMContentLoaded', () => {
     followerCount: document.getElementById('profile-follower-count'),
     role: document.getElementById('profile-role'),
     roleIcon: document.getElementById('profile-role-icon'),
+    roleDetails: document.getElementById('profile-role-details'),
     avatar: document.getElementById('profile-avatar-image'),
     avatarFallback: document.getElementById('profile-avatar-fallback'),
     cover: document.getElementById('profile-cover-image'),
@@ -101,13 +75,20 @@ document.addEventListener('DOMContentLoaded', () => {
     threadUpvote: document.getElementById('thread-upvote'),
     threadLikeCount: document.getElementById('thread-like-count'),
     postList: document.getElementById('profile-post-list'),
+    listingGrid: document.getElementById('profile-listing-grid'),
+    lookbookGrid: document.getElementById('profile-lookbook-grid'),
+    lookbookManageLink: document.getElementById('profile-lookbook-manage'),
+    profileTabs: document.querySelectorAll('[data-profile-tab]'),
+    profilePanels: document.querySelectorAll('[data-profile-panel]'),
     followButton: document.getElementById('profile-follow-button'),
     editButton: document.getElementById('open-profile-editor'),
     logoutButton: document.getElementById('profile-logout-button'),
     bannerEditButton: document.getElementById('edit-banner-button'),
     avatarEditButton: document.getElementById('edit-avatar-button'),
-    bannerFileInput: document.getElementById('banner-file-input'),
-    avatarFileInput: document.getElementById('avatar-file-input'),
+    avatarInput: document.getElementById('edit-avatar-file'),
+    bannerInput: document.getElementById('edit-banner-file'),
+    avatarPreview: document.getElementById('edit-avatar-preview'),
+    bannerPreview: document.getElementById('edit-banner-preview'),
     commentForm: document.getElementById('add-comment-form'),
     commentInput: document.getElementById('new-comment')
   };
@@ -117,15 +98,17 @@ document.addEventListener('DOMContentLoaded', () => {
       return 'Member';
     }
     const role = value.trim().toLowerCase();
-    if (role === 'member / student') {
-      return 'Member';
-    }
+    if (role === 'member' || role === 'student' || role === 'member / student') return 'Member';
+    if (role === 'tailor') return 'Tailor / Designer';
+    if (role === 'seller') return 'Seller';
+    if (role === 'verified tailor') return 'Verified Tailor';
     return supportedRoles.find((item) => item.toLowerCase() === role) || 'Member';
   }
 
   function loadProfile() {
     try {
-      const saved = window.localStorage.getItem('atelierUser');
+      const saved = window.localStorage.getItem('atelier_current_user')
+        || window.localStorage.getItem('atelierUser');
       if (!saved) {
         return { ...defaultProfile };
       }
@@ -138,12 +121,14 @@ document.addEventListener('DOMContentLoaded', () => {
       return {
         ...defaultProfile,
         ...storedProfile,
-        name: storedProfile.displayName || storedProfile.name || defaultProfile.name,
-        username: storedProfile.username || defaultProfile.username,
+        id: storedProfile.id || '',
+        name: storedProfile.display_name || storedProfile.displayName || storedProfile.name || defaultProfile.name,
+        username: `@${normalizeHandle(storedProfile.username || defaultProfile.username)}`,
         bio: typeof storedProfile.bio === 'string' ? storedProfile.bio : defaultProfile.bio,
         role: normalizeRole(storedProfile.role),
-        avatarUrl: typeof storedProfile.avatarUrl === 'string' ? storedProfile.avatarUrl : '',
-        coverUrl: typeof storedProfile.coverUrl === 'string' ? storedProfile.coverUrl : '',
+        roleDetails: storedProfile.role_details || storedProfile.roleDetails || {},
+        avatarUrl: storedProfile.avatar_url || storedProfile.avatarUrl || '',
+        coverUrl: storedProfile.banner_url || storedProfile.bannerUrl || storedProfile.coverUrl || '',
         followingCount: readCount(storedProfile.followingCount, storedProfile.following, 125),
         followersCount: readCount(storedProfile.followersCount, storedProfile.followerCount, 578)
       };
@@ -166,7 +151,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function hasAuthenticatedUser() {
     try {
-      const saved = JSON.parse(window.localStorage.getItem('atelierUser') || 'null');
+      const saved = JSON.parse(
+        window.localStorage.getItem('atelier_current_user')
+        || window.localStorage.getItem('atelierUser')
+        || 'null'
+      );
       return Boolean(
         saved
         && typeof saved === 'object'
@@ -205,11 +194,11 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  const viewerProfile = loadProfile();
-  const viewerIsAuthenticated = hasAuthenticatedUser();
+  let viewerProfile = loadProfile();
+  let viewerIsAuthenticated = hasAuthenticatedUser();
   const requestedUser = new URLSearchParams(window.location.search).get('user');
   const requestedHandle = normalizeHandle(requestedUser);
-  const isPublicProfile = Boolean(requestedHandle);
+  let isPublicProfile = Boolean(requestedHandle);
 
   function getPublicProfile(handle) {
     const aliases = window.ATELIER_PUBLIC_PROFILE_ALIASES || {};
@@ -257,7 +246,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   let profile = isPublicProfile ? getPublicProfile(requestedHandle) : viewerProfile;
-  const publicHandle = isPublicProfile ? normalizeHandle(profile.username) : requestedHandle;
+  let publicHandle = isPublicProfile ? normalizeHandle(profile.username) : requestedHandle;
 
   function updateRoleIcon(role) {
     const icons = {
@@ -273,6 +262,13 @@ document.addEventListener('DOMContentLoaded', () => {
     elements.name.textContent = profile.name;
     elements.username.textContent = profile.username;
     elements.bio.textContent = profile.bio;
+    const details = profile.roleDetails && typeof profile.roleDetails === 'object'
+      ? Object.entries(profile.roleDetails)
+        .filter(([, value]) => typeof value === 'string' && value.trim())
+        .map(([key, value]) => `${key.replace(/[_-]+/g, ' ')}: ${value.trim()}`)
+      : [];
+    elements.roleDetails.textContent = details.join(' · ');
+    elements.roleDetails.hidden = details.length === 0;
     elements.followingCount.textContent = String(readCount(profile.followingCount, profile.following, 125));
     elements.followerCount.textContent = String(readCount(profile.followersCount, profile.followerCount, 578));
     elements.role.textContent = profile.role;
@@ -283,9 +279,8 @@ document.addEventListener('DOMContentLoaded', () => {
     elements.logoutButton.hidden = isPublicProfile;
     elements.bannerEditButton.hidden = isPublicProfile;
     elements.avatarEditButton.hidden = isPublicProfile;
-    elements.bannerFileInput.hidden = isPublicProfile;
-    elements.avatarFileInput.hidden = isPublicProfile;
     elements.followButton.hidden = !isPublicProfile;
+    elements.lookbookManageLink.hidden = isPublicProfile;
     if (isPublicProfile) {
       elements.followButton.disabled = false;
       elements.followButton.textContent = 'Follow';
@@ -307,6 +302,131 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
       elements.cover.hidden = true;
       elements.coverFallback.hidden = false;
+    }
+  }
+
+  function setProfileTab(tabName) {
+    elements.profileTabs.forEach((tab) => {
+      const selected = tab.dataset.profileTab === tabName;
+      tab.classList.toggle('is-active', selected);
+      tab.setAttribute('aria-selected', String(selected));
+    });
+    elements.profilePanels.forEach((panel) => {
+      panel.hidden = panel.dataset.profilePanel !== tabName;
+    });
+  }
+
+  function cacheProfileForLegacyPages(row) {
+    const cached = window.atelierSupabase.cacheProfile(row);
+    profile = {
+      ...profile,
+      id: cached.id,
+      name: cached.display_name,
+      username: `@${cached.username}`,
+      bio: cached.bio || '',
+      role: normalizeRole(cached.role),
+      roleDetails: cached.role_details,
+      avatarUrl: cached.avatar_url,
+      coverUrl: cached.banner_url
+    };
+    viewerProfile = { ...profile };
+    return cached;
+  }
+
+  function profileFromDatabaseRow(row) {
+    return {
+      id: row.id || '',
+      name: String(row.display_name || row.username || 'Atelier Member'),
+      username: `@${normalizeHandle(row.username)}`,
+      bio: String(row.bio || ''),
+      role: normalizeRole(row.role),
+      roleDetails: row.role_details && typeof row.role_details === 'object' ? row.role_details : {},
+      avatarUrl: String(row.avatar_url || ''),
+      coverUrl: String(row.banner_url || ''),
+      followingCount: readCount(row.following_count, row.following, 0),
+      followersCount: readCount(row.followers_count, row.follower_count, 0)
+    };
+  }
+
+  async function loadProfileFromSupabase() {
+    try {
+      const client = window.atelierSupabase.getClient();
+      const session = await window.atelierSupabase.getSession();
+      viewerIsAuthenticated = Boolean(session && session.user);
+      const oauthCallback = window.location.hash.includes('access_token=')
+        || new URLSearchParams(window.location.search).has('code');
+
+      if (viewerIsAuthenticated) {
+        let row = await window.atelierSupabase.fetchProfile(session.user, { createIfMissing: true });
+        const pendingRole = window.localStorage.getItem('atelierPendingRole');
+        if (oauthCallback && ['member', 'tailor', 'seller'].includes(pendingRole)) {
+          const { data, error } = await client
+            .from('profiles')
+            .update({ role: pendingRole })
+            .eq('id', session.user.id)
+            .select('*')
+            .single();
+          if (error) throw error;
+          row = data;
+        }
+        const cached = cacheProfileForLegacyPages(row);
+        const isViewingSelf = requestedHandle && requestedHandle === normalizeHandle(cached.username);
+        if (!requestedHandle || isViewingSelf) {
+          isPublicProfile = false;
+          profile = { ...viewerProfile };
+          publicHandle = normalizeHandle(profile.username);
+        } else {
+          isPublicProfile = true;
+        }
+      } else if (!requestedHandle) {
+        window.location.assign('login.html');
+        return;
+      }
+
+      if (requestedHandle && isPublicProfile) {
+        const { data, error } = await client
+          .from('profiles')
+          .select('*')
+          .ilike('username', requestedHandle)
+          .limit(1);
+        if (error) throw error;
+        if (data && data.length) profile = profileFromDatabaseRow(data[0]);
+        else profile = getPublicProfile(requestedHandle);
+        publicHandle = normalizeHandle(profile.username);
+      }
+
+      renderProfile();
+      renderFollowButton();
+      setProfileTab('posts');
+      renderPublicPosts();
+      await Promise.all([loadRemotePublicPosts(), loadProfileListings(), loadProfileLookbook()]);
+
+      if (oauthCallback && viewerIsAuthenticated) {
+        window.localStorage.removeItem('atelierPendingRole');
+        const destination = window.atelierAuth.consumeRedirectAfterLogin('profile.html');
+        const currentPage = `${window.location.pathname}${window.location.search}`;
+        if (destination !== 'profile.html' && !destination.endsWith(currentPage)) {
+          window.location.assign(destination);
+        } else {
+          window.history.replaceState(null, '', window.location.pathname);
+        }
+      }
+    } catch (error) {
+      console.error('Unable to load the Atelier profile from Supabase.', error);
+      if (!requestedHandle && !viewerIsAuthenticated) {
+        window.location.assign('login.html');
+        return;
+      }
+      showProfileToast(`Could not load the profile from Supabase: ${error.message}`, 'error');
+      if (requestedHandle) {
+        profile = getPublicProfile(requestedHandle);
+        isPublicProfile = true;
+        publicHandle = normalizeHandle(profile.username);
+        renderProfile();
+        renderFollowButton();
+        renderPublicPosts();
+        await Promise.all([loadProfileListings(), loadProfileLookbook()]);
+      }
     }
   }
 
@@ -369,12 +489,21 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       for (let index = 0; index < window.localStorage.length; index += 1) {
         const key = window.localStorage.key(index);
-        if (!key || !key.startsWith('atelier_community_') || !key.endsWith('_posts')) {
+        if (!key || !key.startsWith('atelier_community_')) {
           continue;
         }
         const saved = JSON.parse(window.localStorage.getItem(key) || '[]');
-        if (Array.isArray(saved)) {
+        if (!Array.isArray(saved)) continue;
+        if (key.endsWith('_posts')) {
           allPosts.push(...saved);
+        } else if (key.endsWith('_forum-threads')) {
+          allPosts.push(...saved.map((thread) => ({
+            ...thread,
+            content: thread.title || '',
+            comments: Array.isArray(thread.replies) ? thread.replies : [],
+            tags: Array.isArray(thread.tags) ? thread.tags : ['COMMUNITY QUESTION'],
+            createdAt: thread.createdAt || thread.created_at || ''
+          })));
         }
       }
     } catch (error) {
@@ -477,19 +606,12 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function loadRemotePublicPosts() {
-    renderPublicPosts();
-    if (!window.supabase || typeof window.supabase.createClient !== 'function') {
-      return;
-    }
+    if (!profile.id || !window.atelierSupabase) return;
     try {
-      const client = window.supabase.createClient(
-        'https://sktkevlfxjppfpjmxguy.supabase.co',
-        'sb_publishable_0jOs1sVk5nRJj1SY9VrgKw_Eoc08C0N'
-      );
-      const { data, error } = await client
+      const { data, error } = await window.atelierSupabase.getClient()
         .from('community_posts')
-        .select('id, author_name, author_handle, content, tags, image_url, likes, created_at')
-        .eq('author_handle', `@${publicHandle}`)
+        .select('*')
+        .eq('user_id', profile.id)
         .order('created_at', { ascending: false })
         .limit(100);
       if (error) {
@@ -497,12 +619,14 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       const posts = (data || []).map((row) => ({
         id: String(row.id),
-        author: row.author_name,
-        handle: row.author_handle,
-        content: row.content,
+        author: row.author_name || profile.name,
+        handle: row.author_handle || `@${publicHandle}`,
+        title: row.title || '',
+        content: row.content || row.body || '',
         tags: Array.isArray(row.tags) ? row.tags : [],
         image_url: row.image_url,
         likes: Number(row.likes || 0),
+        comments: Array.isArray(row.comments) ? row.comments : [],
         createdAt: row.created_at,
         timestamp: row.created_at
           ? new Date(row.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
@@ -510,8 +634,155 @@ document.addEventListener('DOMContentLoaded', () => {
       }));
       renderPublicPosts(posts);
     } catch (error) {
-      console.warn('Public community posts could not be loaded from Supabase; showing posts saved in this browser.', error.message);
+      console.warn('Profile posts could not be loaded from Supabase; showing local posts instead.', error.message);
+      renderPublicPosts();
     }
+  }
+
+  function localMarketplaceListings() {
+    const stored = readStoredArray('atelier_marketplace_items')
+      .concat(readStoredArray('atelier_marketplace_listings'));
+    const unique = new Map(stored.map((item) => [String(item.id || `${item.seller}-${item.title}`), item]));
+    return [...unique.values()].filter((item) => normalizeHandle(item.seller || item.username) === publicHandle);
+  }
+
+  function renderProfileListings(remoteListings) {
+    const items = new Map();
+    [...localMarketplaceListings(), ...(remoteListings || [])].forEach((item, index) => {
+      items.set(String(item.id || `${item.title || 'listing'}-${index}`), item);
+    });
+    elements.listingGrid.replaceChildren();
+    if (!items.size) {
+      const empty = document.createElement('p');
+      empty.className = 'profile-public-empty';
+      empty.textContent = 'No active listings from this profile yet.';
+      elements.listingGrid.append(empty);
+      return;
+    }
+
+    items.forEach((item) => {
+      const card = document.createElement('article');
+      card.className = 'profile-listing-card';
+      const image = document.createElement('img');
+      image.src = item.image_url || item.image || 'assets/profile-avatar-fallback.svg';
+      image.alt = item.title || 'Marketplace listing';
+      image.loading = 'lazy';
+      const details = document.createElement('div');
+      const title = document.createElement('h3');
+      title.textContent = item.title || 'Atelier listing';
+      const price = document.createElement('p');
+      const amount = Number(item.price);
+      price.textContent = Number.isFinite(amount) ? `₹${amount.toLocaleString('en-IN')}` : 'Price on request';
+      const link = document.createElement('a');
+      link.href = 'marketplace.html';
+      link.textContent = 'View Marketplace';
+      details.append(title, price, link);
+      card.append(image, details);
+      elements.listingGrid.append(card);
+    });
+  }
+
+  async function loadProfileListings() {
+    let remoteListings = [];
+    if (profile.id && window.atelierSupabase) {
+      try {
+        const { data, error } = await window.atelierSupabase.getClient()
+          .from('marketplace_items')
+          .select('*')
+          .eq('seller_id', profile.id)
+          .order('created_at', { ascending: false });
+        if (error) throw error;
+        remoteListings = data || [];
+      } catch (error) {
+        console.warn('Profile listings could not be loaded from Supabase; showing local listings instead.', error.message);
+      }
+    }
+    renderProfileListings(remoteListings);
+  }
+
+  function mapProfileLookbookEntry(entry) {
+    return {
+      id: String(entry.id || ''),
+      user_id: String(entry.user_id || ''),
+      username: normalizeHandle(entry.username),
+      title: String(entry.title || entry.outfit_title || 'Atelier outfit'),
+      vibe: String(entry.vibe || 'Styled look'),
+      caption: String(entry.caption || ''),
+      image_url: String(entry.image_url || entry.photo_url || ''),
+      created_at: entry.created_at || entry.saved_at || ''
+    };
+  }
+
+  function renderProfileLookbook(remoteEntries) {
+    const localEntries = readStoredArray('atelier_lookbook_entries')
+      .filter((entry) => entry && typeof entry === 'object' && !Array.isArray(entry))
+      .map(mapProfileLookbookEntry)
+      .filter((entry) => (
+        (profile.id && entry.user_id === String(profile.id))
+        || (publicHandle && entry.username === normalizeHandle(publicHandle))
+      ));
+    const entries = new Map();
+    [...localEntries, ...remoteEntries].forEach((entry) => {
+      if (entry.image_url) entries.set(entry.id || `${entry.title}-${entry.created_at}`, entry);
+    });
+
+    elements.lookbookGrid.replaceChildren();
+    const lookbookEntries = [...entries.values()].sort((left, right) => (
+      new Date(right.created_at).getTime() - new Date(left.created_at).getTime()
+    ));
+    if (!lookbookEntries.length) {
+      const empty = document.createElement('p');
+      empty.className = 'profile-lookbook-gallery__empty';
+      empty.textContent = 'No outfit photos in this lookbook yet.';
+      elements.lookbookGrid.append(empty);
+      return;
+    }
+
+    lookbookEntries.forEach((entry) => {
+      const card = document.createElement('article');
+      card.className = 'profile-lookbook-photo';
+      const image = document.createElement('img');
+      image.src = entry.image_url;
+      image.alt = entry.title;
+      image.loading = 'lazy';
+      const details = document.createElement('div');
+      details.className = 'profile-lookbook-photo__details';
+      const title = document.createElement('h3');
+      title.textContent = entry.title;
+      const vibe = document.createElement('span');
+      vibe.className = 'profile-lookbook-photo__vibe';
+      vibe.textContent = entry.vibe;
+      const caption = document.createElement('p');
+      caption.textContent = entry.caption;
+      caption.hidden = !entry.caption;
+      const date = document.createElement('time');
+      if (entry.created_at) date.dateTime = entry.created_at;
+      const createdDate = new Date(entry.created_at);
+      date.textContent = Number.isNaN(createdDate.getTime())
+        ? ''
+        : createdDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+      details.append(title, vibe, caption, date);
+      card.append(image, details);
+      elements.lookbookGrid.append(card);
+    });
+  }
+
+  async function loadProfileLookbook() {
+    let remoteEntries = [];
+    if (profile.id && window.atelierSupabase) {
+      try {
+        const { data, error } = await window.atelierSupabase.getClient()
+          .from('lookbook_entries')
+          .select('*')
+          .eq('user_id', profile.id)
+          .order('created_at', { ascending: false });
+        if (error) throw error;
+        remoteEntries = (data || []).map(mapProfileLookbookEntry);
+      } catch (error) {
+        console.warn('Profile lookbook could not be loaded from Supabase; showing matching cached photos.', error);
+      }
+    }
+    renderProfileLookbook(remoteEntries);
   }
 
   elements.followButton.addEventListener('click', () => {
@@ -538,170 +809,159 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  function saveProfile(nextProfile) {
-    try {
-      window.localStorage.setItem('atelierUser', JSON.stringify(nextProfile));
-      return true;
-    } catch (error) {
-      console.error('Unable to save the Atelier profile to localStorage.', error);
-      showProfileToast('Could not save your profile. Check browser storage and try again.', 'error');
-      return false;
-    }
-  }
-
   renderProfile();
   renderFollowButton();
-  if (isPublicProfile) {
-    loadRemotePublicPosts();
+  setProfileTab('posts');
+
+  let pendingAvatarUrl = profile.avatarUrl || '';
+  let pendingBannerUrl = profile.coverUrl || '';
+
+  function openEditor(focusInput) {
+    document.getElementById('edit-display-name').value = profile.name;
+    document.getElementById('edit-username').value = normalizeHandle(profile.username);
+    document.getElementById('edit-bio').value = profile.bio;
+    const role = normalizeRole(profile.role);
+    document.getElementById('edit-role').value = role === 'Tailor / Designer' || role === 'Verified Tailor'
+      ? 'tailor'
+      : role.toLowerCase();
+    const details = profile.roleDetails || {};
+    document.getElementById('edit-role-neighborhood').value = details.neighborhood || '';
+    document.getElementById('edit-role-specialty').value = details.specialty || '';
+    document.getElementById('edit-role-upi').value = details.upi_id || '';
+    document.getElementById('edit-role-whatsapp').value = details.whatsapp || '';
+    pendingAvatarUrl = profile.avatarUrl || '';
+    pendingBannerUrl = profile.coverUrl || '';
+    elements.avatarInput.value = '';
+    elements.bannerInput.value = '';
+    elements.avatarPreview.hidden = !pendingAvatarUrl;
+    elements.avatarPreview.src = pendingAvatarUrl;
+    elements.bannerPreview.hidden = !pendingBannerUrl;
+    elements.bannerPreview.src = pendingBannerUrl;
+    elements.editDialog.showModal();
+    if (focusInput) window.setTimeout(() => focusInput.focus(), 0);
   }
 
-  document.getElementById('profile-logout-button').addEventListener('click', () => {
-    try {
-      window.localStorage.removeItem('atelierUser');
-    } catch (error) {
-      console.error('Unable to clear the Atelier user session.', error);
-      showProfileToast('Could not log out. Please check your browser storage settings and try again.', 'error');
-      return;
-    }
-
-    window.location.assign('login.html');
-  });
-
-  document.getElementById('open-profile-editor').addEventListener('click', () => {
-    document.getElementById('edit-display-name').value = profile.name;
-    document.getElementById('edit-username').value = profile.username;
-    document.getElementById('edit-bio').value = profile.bio;
-    document.getElementById('edit-role').value = profile.role;
-    elements.editDialog.showModal();
-  });
-
-  const bannerInput = document.getElementById('banner-file-input');
-  document.getElementById('edit-banner-button').addEventListener('click', () => {
-    bannerInput.click();
-  });
-
-  elements.editForm.addEventListener('submit', (event) => {
-    event.preventDefault();
-    const formData = new FormData(elements.editForm);
-    const name = String(formData.get('displayName') || '').trim();
-    let username = String(formData.get('username') || '').trim();
-    const bio = String(formData.get('bio') || '').trim();
-    const role = normalizeRole(String(formData.get('role') || 'Member'));
-
-    if (!username.startsWith('@')) {
-      username = `@${username}`;
-    }
-    if (!name || username === '@') {
-      showProfileToast('Enter a display name and username.', 'error');
-      return;
-    }
-
-    const nextProfile = {
-      ...profile,
-      name,
-      displayName: name,
-      username,
-      bio,
-      role
-    };
-    if (!saveProfile(nextProfile)) {
-      return;
-    }
-
-    profile = nextProfile;
-    renderProfile();
-    elements.editDialog.close();
-    showProfileToast('Profile updated.');
-  });
-
-  document.getElementById('edit-avatar-button').addEventListener('click', () => {
-    document.getElementById('avatar-file-input').click();
-  });
-
-  async function uploadProfileImage(input, field, imageElement, fallbackElement) {
+  async function prepareImage(input, preview, kind) {
     const file = input.files && input.files[0];
-    if (!file) {
-      return;
-    }
+    if (!file) return;
     if (!file.type.startsWith('image/')) {
-      showProfileToast('Choose an image file to upload.', 'error');
+      showProfileToast('Choose an image file.', 'error');
       input.value = '';
       return;
     }
 
-    const previousUrl = profile[field];
-    let previewUrl = '';
-    let keepPreviewUrl = false;
+    preview.src = URL.createObjectURL(file);
+    preview.hidden = false;
+    showProfileToast(`Uploading ${kind}...`, 'loading');
     try {
-      previewUrl = URL.createObjectURL(file);
-      imageElement.src = previewUrl;
-      imageElement.hidden = false;
-      fallbackElement.hidden = true;
-
-      const secureUrl = await uploadToCloudinary(file);
-      const nextProfile = { ...profile, [field]: secureUrl };
-      if (!saveProfile(nextProfile)) {
-        imageElement.src = previewUrl;
-        imageElement.hidden = false;
-        fallbackElement.hidden = true;
-        keepPreviewUrl = true;
-        return;
-      }
-
-      profile = nextProfile;
-      imageElement.src = secureUrl;
-      showProfileToast('Image updated.');
+      const uploadedUrl = await window.atelierSupabase.uploadImage(file);
+      preview.src = uploadedUrl;
+      if (kind === 'profile picture') pendingAvatarUrl = uploadedUrl;
+      else pendingBannerUrl = uploadedUrl;
+      showProfileToast(`${kind} uploaded. Save changes to apply it.`);
     } catch (error) {
-      console.error('Unable to upload the profile image.', error);
+      console.error(`Unable to upload the ${kind}.`, error);
       try {
         const dataUrl = await readFileAsDataUrl(file);
-        const nextProfile = { ...profile, [field]: dataUrl };
-        if (!saveProfile(nextProfile)) {
-          imageElement.src = previewUrl || previousUrl || '';
-          imageElement.hidden = !previewUrl && !previousUrl;
-          fallbackElement.hidden = Boolean(previewUrl || previousUrl);
-          keepPreviewUrl = Boolean(previewUrl);
-          showProfileToast(`Image upload failed (${error.message}); the local fallback could not be saved.`, 'error');
-          return;
-        }
-
-        profile = nextProfile;
-        imageElement.src = dataUrl;
-        imageElement.hidden = false;
-        fallbackElement.hidden = true;
-        showProfileToast(`Cloudinary upload failed; saved the image locally instead. ${error.message}`, 'error');
+        preview.src = dataUrl;
+        if (kind === 'profile picture') pendingAvatarUrl = dataUrl;
+        else pendingBannerUrl = dataUrl;
+        showProfileToast(`Cloudinary upload failed; preview saved locally. ${error.message}`, 'error');
       } catch (fallbackError) {
-        console.error('Unable to save a local profile image fallback.', fallbackError);
-        imageElement.src = previewUrl || previousUrl || '';
-        imageElement.hidden = !previewUrl && !previousUrl;
-        fallbackElement.hidden = Boolean(previewUrl || previousUrl);
-        keepPreviewUrl = Boolean(previewUrl);
-        showProfileToast(`Cloudinary upload failed (${error.message}); local fallback failed (${fallbackError.message}).`, 'error');
+        console.error(`Unable to preview the ${kind}.`, fallbackError);
+        showProfileToast(`Could not preview this image: ${fallbackError.message}`, 'error');
       }
     } finally {
-      if (previewUrl && !keepPreviewUrl) {
-        URL.revokeObjectURL(previewUrl);
-      }
       input.value = '';
     }
   }
 
-  document.getElementById('avatar-file-input').addEventListener('change', (event) => {
-    uploadProfileImage(
-      event.currentTarget,
-      'avatarUrl',
-      elements.avatar,
-      elements.avatarFallback
+  elements.avatarInput.addEventListener('change', () => prepareImage(
+    elements.avatarInput,
+    elements.avatarPreview,
+    'profile picture'
+  ));
+  elements.bannerInput.addEventListener('change', () => prepareImage(
+    elements.bannerInput,
+    elements.bannerPreview,
+    'cover banner'
+  ));
+  elements.editButton.addEventListener('click', () => openEditor());
+  elements.avatarEditButton.addEventListener('click', () => openEditor(elements.avatarInput));
+  elements.bannerEditButton.addEventListener('click', () => openEditor(elements.bannerInput));
+
+  elements.editForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const formData = new FormData(elements.editForm);
+    const displayName = String(formData.get('displayName') || '').trim();
+    const username = window.atelierSupabase.normalizeUsername(formData.get('username'));
+    const bio = String(formData.get('bio') || '').trim();
+    const role = String(formData.get('role') || 'member').toLowerCase();
+    if (!displayName || username.length < 3) {
+      showProfileToast('Enter a display name and a username with at least 3 letters, numbers, or underscores.', 'error');
+      return;
+    }
+    const roleDetails = Object.fromEntries(
+      ['neighborhood', 'specialty', 'upi_id', 'whatsapp']
+        .map((key) => [key, String(formData.get(key) || '').trim()])
+        .filter(([, value]) => value)
     );
+    const submitButton = elements.editForm.querySelector('[type="submit"]');
+    submitButton.disabled = true;
+    showProfileToast('Saving profile...', 'loading');
+    try {
+      const session = await window.atelierSupabase.getSession();
+      if (!session || !session.user) throw new Error('Your session expired. Please log in again.');
+      const { data, error } = await window.atelierSupabase.getClient()
+        .from('profiles')
+        .update({
+          display_name: displayName,
+          username,
+          bio,
+          role,
+          avatar_url: pendingAvatarUrl,
+          banner_url: pendingBannerUrl,
+          role_details: roleDetails
+        })
+        .eq('id', session.user.id)
+        .select('*')
+        .single();
+      if (error) throw error;
+
+      cacheProfileForLegacyPages(data);
+      renderProfile();
+      renderFollowButton();
+      elements.editDialog.close();
+      showProfileToast('Profile updated.');
+    } catch (error) {
+      console.error('Unable to update the Atelier profile.', error);
+      showProfileToast(`Could not save your profile: ${error.message}`, 'error');
+    } finally {
+      submitButton.disabled = false;
+    }
   });
-  document.getElementById('banner-file-input').addEventListener('change', (event) => {
-    uploadProfileImage(
-      event.currentTarget,
-      'coverUrl',
-      elements.cover,
-      elements.coverFallback
-    );
+
+  elements.logoutButton.addEventListener('click', async () => {
+    elements.logoutButton.disabled = true;
+    try {
+      const { error } = await window.atelierSupabase.getClient().auth.signOut();
+      if (error) throw error;
+      window.localStorage.removeItem('atelier_current_user');
+      window.localStorage.removeItem('atelierUser');
+      window.localStorage.removeItem('atelierSessionInitialized');
+      window.location.assign('index.html');
+    } catch (error) {
+      console.error('Unable to sign out of Atelier.', error);
+      showProfileToast(`Could not log out: ${error.message}`, 'error');
+      elements.logoutButton.disabled = false;
+    }
   });
+
+  elements.profileTabs.forEach((tab) => {
+    tab.addEventListener('click', () => setProfileTab(tab.dataset.profileTab));
+  });
+
+  loadProfileFromSupabase();
 
   document.querySelectorAll('[data-close-dialog]').forEach((button) => {
     button.addEventListener('click', () => button.closest('dialog').close());
