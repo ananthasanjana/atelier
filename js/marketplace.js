@@ -17,10 +17,10 @@
   const authLoginLink = document.getElementById('market-auth-login');
   const authTrackLink = document.getElementById('market-auth-track');
   const checkedFilters = new Set();
-  const state = { activity: 'all', search: '', quickCategory: 'all', price: '' };
-  let previewDataUrl = '';
+  const state = { activity: 'all', search: '', quickCategory: 'all', price: '', category: '', condition: '' };
   let previewObjectUrl = '';
   let quickViewProductId = null;
+  let remoteListings = null;
 
   function readArray(storageKey) {
     try {
@@ -52,13 +52,16 @@
     return [...legacyListings, ...savedListings];
   }
 
+  function getSupabaseClient() {
+    if (!window.atelierSupabase) throw new Error('Supabase is unavailable. Refresh the page and try again.');
+    return window.atelierSupabase.getClient();
+  }
+
   function currentSeller() {
     try {
-      const user = JSON.parse(localStorage.getItem('atelierUser') || 'null');
-      return String(user?.username || user?.name || 'atelier-maker')
-        .replace(/^@/, '')
-        .replace(/\s+/g, '')
-        .toLowerCase();
+      const profile = window.atelierSupabase.readCachedProfile();
+      if (profile && profile.username) return profile.username;
+      return 'atelier-maker';
     } catch (error) {
       console.error('Unable to read the current Atelier username.', error);
       return 'atelier-maker';
@@ -66,15 +69,43 @@
   }
 
   function myListings() {
-    return listings().filter((item) => item.seller === currentSeller());
+    return inventory().filter((item) => item.seller === currentSeller());
   }
 
   function inventory() {
+    if (remoteListings && remoteListings.length) return remoteListings;
     const savedItems = listings();
     const savedById = new Map(savedItems.map((item) => [item.id, item]));
     const seededIds = new Set(products.map((product) => product.id));
     const seededProducts = products.map((product) => ({ ...product, ...savedById.get(product.id) }));
-    return [...seededProducts, ...savedItems.filter((item) => !seededIds.has(item.id))];
+    return [...seededProducts, ...savedItems.filter((item) => !seededIds.has(item.id))]
+      .filter((item) => String(item.status || 'available').toLowerCase() !== 'sold');
+  }
+
+  async function loadMarketplaceListings() {
+    const status = document.getElementById('marketplace-data-status');
+    status.textContent = 'Loading available listings…';
+    try {
+      const { data, error } = await getSupabaseClient()
+        .from('marketplace_listings')
+        .select('*')
+        .eq('status', 'available')
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      remoteListings = (data || [])
+        .map(window.normalizeAtelierMarketplaceListing)
+        .filter((item) => item.id);
+      status.textContent = remoteListings.length
+        ? ''
+        : 'No live listings yet — showing sample finds while the marketplace grows.';
+    } catch (error) {
+      console.error('Unable to load marketplace listings from Supabase.', error);
+      remoteListings = [];
+      status.textContent = 'Live listings could not be loaded. Showing sample finds for now.';
+    }
+    updateFilterOptions();
+    updateCounts();
+    render();
   }
 
   function isAuthenticated() {
@@ -194,9 +225,11 @@
   }
 
   function productMatches(product) {
-    const searchText = `${product.title} ${product.seller} ${product.tags.join(' ')} ${product.sellerType}`.toLowerCase();
+    const searchText = `${product.title} ${product.seller} ${product.tags.join(' ')} ${product.sellerType} ${product.category || ''} ${product.condition || ''}`.toLowerCase();
     if (state.search && !searchText.includes(state.search.toLowerCase())) return false;
     if (!matchesPrice(product)) return false;
+    if (state.category && String(product.category || product.tags[0] || '').toLowerCase() !== state.category.toLowerCase()) return false;
+    if (state.condition && String(product.condition || 'Good').toLowerCase() !== state.condition) return false;
 
     const selected = [...checkedFilters];
     const sellerFilters = selected.filter((filter) => filter.type === 'seller');
@@ -239,10 +272,37 @@
 
   function render() {
     updateAuthControls();
+    updateFilterOptions();
     const visible = inventory().filter(productMatches);
     grid.replaceChildren(...visible.map(productCard));
     document.getElementById('marketplace-empty').hidden = visible.length > 0;
     document.getElementById('marketplace-result-count').textContent = `${visible.length} ${visible.length === 1 ? 'find' : 'finds'}`;
+  }
+
+  function updateFilterOptions() {
+    const categorySelect = document.getElementById('market-category-filter');
+    const conditionSelect = document.getElementById('market-condition-filter');
+    const categories = [...new Set(inventory().map((item) => String(item.category || item.tags[0] || '').trim()).filter(Boolean))]
+      .sort((left, right) => left.localeCompare(right));
+    const categoryOptions = ['<option value="">All categories</option>', ...categories.map((category) => (
+      `<option value="${escapeHtml(category)}">${escapeHtml(category)}</option>`
+    ))].join('');
+    if (categorySelect.innerHTML !== categoryOptions) {
+      categorySelect.innerHTML = categoryOptions;
+      categorySelect.value = categories.find((category) => category.toLowerCase() === state.category.toLowerCase()) || '';
+      state.category = categorySelect.value;
+    }
+
+    const conditions = [...new Set(inventory().map((item) => String(item.condition || 'Good').trim()).filter(Boolean))]
+      .sort((left, right) => left.localeCompare(right));
+    const conditionOptions = ['<option value="">All conditions</option>', ...conditions.map((condition) => (
+      `<option value="${escapeHtml(condition.toLowerCase())}">${escapeHtml(condition)}</option>`
+    ))].join('');
+    if (conditionSelect.innerHTML !== conditionOptions) {
+      conditionSelect.innerHTML = conditionOptions;
+      conditionSelect.value = conditions.find((condition) => condition.toLowerCase() === state.condition) || '';
+      state.condition = conditionSelect.value;
+    }
   }
 
   function updateCounts() {
@@ -263,15 +323,6 @@
     return String(value).replace(/[&<>"']/g, (character) => ({
       '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
     })[character]);
-  }
-
-  function readFileAsDataUrl(file) {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(String(reader.result || ''));
-      reader.onerror = () => reject(reader.error || new Error('Unable to read the selected photo.'));
-      reader.readAsDataURL(file);
-    });
   }
 
   function renderQuickView(id) {
@@ -332,6 +383,14 @@
   });
   document.getElementById('market-search').addEventListener('input', (event) => {
     state.search = event.target.value.trim();
+    render();
+  });
+  document.getElementById('market-category-filter').addEventListener('change', (event) => {
+    state.category = event.target.value;
+    render();
+  });
+  document.getElementById('market-condition-filter').addEventListener('change', (event) => {
+    state.condition = event.target.value;
     render();
   });
   document.querySelectorAll('[data-filter]').forEach((input) => {
@@ -405,13 +464,6 @@
     preview.src = previewObjectUrl;
     preview.hidden = false;
     document.getElementById('listing-photo-label').textContent = file.name;
-    const reader = new FileReader();
-    reader.onload = () => { previewDataUrl = String(reader.result || ''); };
-    reader.onerror = () => {
-      console.error('Unable to preview the selected listing photo.', reader.error);
-      document.getElementById('listing-message').textContent = 'The photo preview could not be loaded. Please try another image.';
-    };
-    reader.readAsDataURL(file);
   });
   document.getElementById('listing-form').addEventListener('submit', async (event) => {
     event.preventDefault();
@@ -426,45 +478,45 @@
     const message = document.getElementById('listing-message');
     submit.disabled = true;
     message.textContent = 'Preparing your listing…';
-    let image = previewDataUrl;
+    let session;
+    try {
+      session = await window.atelierSupabase.getSession();
+    } catch (error) {
+      console.error('Unable to verify the seller session.', error);
+      message.textContent = 'Your sign-in could not be verified. Please refresh and try again.';
+      submit.disabled = false;
+      return;
+    }
+    if (!session) {
+      message.textContent = 'Please log in again before listing an item.';
+      submit.disabled = false;
+      return;
+    }
+    let image = '';
     if (file instanceof File && file.size > 0) {
-      if (!image) {
-        try {
-          image = await readFileAsDataUrl(file);
-          previewDataUrl = image;
-        } catch (error) {
-          console.error('Unable to create a local copy of the listing photo.', error);
-          message.textContent = 'The photo could not be read. Please choose another image.';
-          submit.disabled = false;
-          return;
-        }
-      }
-      const uploadData = new FormData();
-      uploadData.append('file', file);
-      uploadData.append('upload_preset', 'atelier_unsigned');
       try {
-        const response = await fetch('https://api.cloudinary.com/v1_1/lify0b3k/image/upload', { method: 'POST', body: uploadData });
-        const result = await response.json();
-        if (!response.ok || !result.secure_url) throw new Error(result.error?.message || 'Cloudinary did not return an image URL.');
-        image = result.secure_url;
+        image = await window.atelierSupabase.uploadImage(file);
       } catch (error) {
-        console.error('Cloudinary listing photo upload failed; keeping a local data URL instead.', error);
-        if (!image) {
-          message.textContent = 'Upload failed and no local photo preview is available. Please choose the image again.';
-          submit.disabled = false;
-          return;
-        }
-        message.textContent = 'Cloudinary upload failed. The listing will use a local photo copy.';
+        console.error('Cloudinary listing photo upload failed.', error);
+        message.textContent = `Photo upload failed: ${error.message || 'Please try again.'}`;
+        submit.disabled = false;
+        return;
       }
     }
-    const seller = currentSeller();
+    const profile = window.atelierSupabase.readCachedProfile();
+    const metadata = session.user.user_metadata || {};
+    const seller = profile && profile.id === session.user.id
+      ? profile.username
+      : window.atelierSupabase.normalizeUsername(metadata.username || metadata.user_name || session.user.email?.split('@')[0]) || `member_${session.user.id.slice(0, 8)}`;
     const category = String(formData.get('category'));
     const newProduct = {
-      id: `listing-${Date.now()}`,
       title: String(formData.get('title')).trim(),
       price: Number(formData.get('price')),
+      category,
+      condition: String(formData.get('condition')),
       tags: [category.toLowerCase()],
       seller,
+      seller_id: session.user.id,
       sellerType: String(formData.get('sellerType')).toLowerCase().replace(/\s+/g, '-'),
       upiId: String(formData.get('upiId')).trim(),
       contact: String(formData.get('contact')).trim(),
@@ -485,10 +537,35 @@
       submit.disabled = false;
       return;
     }
-    const next = [...readArray(key.listings), newProduct];
-    if (saveArray(key.listings, next)) {
+    try {
+      const listingRow = {
+        seller_id: newProduct.seller_id,
+        seller_username: newProduct.seller,
+        item_name: newProduct.title,
+        category: newProduct.category,
+        condition: newProduct.condition,
+        seller_type: newProduct.sellerType,
+        price: newProduct.price,
+        upi_id: newProduct.upiId,
+        image_url: newProduct.image,
+        description: newProduct.description,
+        status: 'available'
+      };
+      const { data, error } = await getSupabaseClient()
+        .from('marketplace_listings')
+        .insert(listingRow)
+        .select('*')
+        .single();
+      if (error) throw error;
+      const savedProduct = window.normalizeAtelierMarketplaceListing(data);
+      const next = [...readArray(key.listings), savedProduct];
+      try {
+        localStorage.setItem(key.listings, JSON.stringify(next));
+      } catch (storageError) {
+        console.warn('Listing was saved to Supabase but could not be cached locally.', storageError);
+      }
+      remoteListings = [savedProduct, ...(remoteListings || []).filter((item) => item.id !== savedProduct.id)];
       form.reset();
-      previewDataUrl = '';
       if (previewObjectUrl) URL.revokeObjectURL(previewObjectUrl);
       previewObjectUrl = '';
       document.getElementById('listing-preview').hidden = true;
@@ -499,6 +576,9 @@
       updateCounts();
       render();
       window.setTimeout(() => listingDialog.close(), 900);
+    } catch (error) {
+      console.error('Unable to create marketplace listing in Supabase.', error);
+      message.textContent = `Your listing could not be saved: ${error.message || 'Please try again.'}`;
     }
     submit.disabled = false;
   });
@@ -508,6 +588,7 @@
     updateCounts();
     render();
   });
+  window.addEventListener('atelier:profile-updated', render);
   function applyActivityFromHash() {
     if (window.location.hash !== '#wishlist' && window.location.hash !== '#bought') return;
     if (!isAuthenticated()) {
@@ -527,4 +608,5 @@
   applyActivityFromHash();
   updateCounts();
   render();
+  loadMarketplaceListings();
 })();

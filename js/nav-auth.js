@@ -44,7 +44,10 @@ document.addEventListener('DOMContentLoaded', () => {
   render(window.atelierSupabase.readCachedProfile());
   window.addEventListener('atelier:profile-updated', (event) => render(event.detail));
   window.addEventListener('storage', (event) => {
-    if (event.key === 'atelier_current_user' || event.key === 'atelierUser') {
+    if (
+      event.key === window.atelierSupabase.activeProfileIdKey
+      || (event.key && event.key.startsWith('atelier_profile_'))
+    ) {
       render(window.atelierSupabase.readCachedProfile());
     }
   });
@@ -53,9 +56,7 @@ document.addEventListener('DOMContentLoaded', () => {
     window.atelierSupabase.getClient().auth.getSession().then(async ({ data, error }) => {
       if (error) throw error;
       if (!data.session) {
-        window.localStorage.removeItem('atelier_current_user');
-        window.localStorage.removeItem('atelierUser');
-        window.localStorage.setItem('atelierSessionInitialized', 'true');
+        window.atelierSupabase.clearCachedProfileActivation();
         render(null);
         return;
       }

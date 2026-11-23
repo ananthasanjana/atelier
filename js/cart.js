@@ -14,7 +14,9 @@
   const wishlistTab = document.getElementById('wishlist-tab');
   const wishlistPanel = document.getElementById('wishlist-panel');
   const cartLoginLink = document.getElementById('cart-login-link');
+  const purchaseButton = document.getElementById('complete-purchase');
   let orderPlaced = false;
+  let remoteListings = null;
   window.ensureAtelierMarketplaceItemsStored();
 
   function readArray(key) {
@@ -50,6 +52,7 @@
   }
 
   function inventory() {
+    if (remoteListings && remoteListings.length) return remoteListings;
     const savedItems = readArray(listingsKey);
     const savedById = new Map(savedItems.map((item) => [item.id, item]));
     const seededProducts = (window.atelierMarketplaceProducts || [])
@@ -58,7 +61,26 @@
     const savedListings = readArray(listingsKey);
     const savedIds = new Set(savedItems.map((item) => item.id));
     const legacyListings = readArray(legacyListingsKey).filter((item) => !savedIds.has(item.id));
-    return [...seededProducts, ...savedListings.filter((item) => !seededIds.has(item.id)), ...legacyListings];
+    return [...seededProducts, ...savedListings.filter((item) => !seededIds.has(item.id)), ...legacyListings]
+      .filter((item) => String(item.status || 'available').toLowerCase() !== 'sold');
+  }
+
+  async function loadMarketplaceListings() {
+    try {
+      const { data, error } = await window.atelierSupabase.getClient()
+        .from('marketplace_listings')
+        .select('*')
+        .eq('status', 'available')
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      remoteListings = (data || []).map(window.normalizeAtelierMarketplaceListing).filter((item) => item.id);
+      render();
+    } catch (error) {
+      console.error('Unable to load marketplace listings for the cart.', error);
+      remoteListings = [];
+      cartMessage.textContent = 'Live listing details could not be loaded. Your saved bag is still available; please try again before ordering.';
+      render();
+    }
   }
 
   function productFor(id) {
@@ -335,7 +357,7 @@
     }));
   }
 
-  function placeOrder() {
+  async function placeOrder() {
     if (!isAuthenticated()) {
       window.atelierAuth.prepareLoginRedirect();
       cartMessage.textContent = 'Log in to place your order.';
@@ -345,45 +367,133 @@
     const cart = readArray(cartKey);
     if (!cart.length) return;
 
-    const date = localDate();
-    const orderId = createOrderId(date);
-    const deliveryMethod = document.querySelector('input[name="delivery"]:checked').value;
-    const deliveryNote = document.getElementById('delivery-note').value.trim();
-    const previousBought = readArray(boughtKey);
-    const orderSubtotal = cart.reduce((sum, item) => sum + (Number(item.price) || 0) * quantityFor(item), 0);
-    const orderTotal = orderSubtotal + shippingCost();
-    const orderItems = cart.map((item) => {
-      const savedProduct = productFor(item.id) || {};
-      return {
-        ...savedProduct,
+    purchaseButton.disabled = true;
+    cartMessage.textContent = 'Confirming your order…';
+    let updatedListingIds = [];
+    try {
+      const client = window.atelierSupabase.getClient();
+      const { data: sessionData, error: sessionError } = await client.auth.getSession();
+      if (sessionError) throw sessionError;
+      const user = sessionData.session && sessionData.session.user;
+      if (!user) {
+        window.atelierAuth.prepareLoginRedirect();
+        document.getElementById('cart-login-gate').hidden = false;
+        throw new Error('Your sign-in has expired. Log in again to confirm this order.');
+      }
+
+      const knownListings = new Map(inventory().map((item) => [item.id, item]));
+      const requestedListingIds = [...new Set(cart
+        .filter((item) => item.supabaseListing || knownListings.get(item.id)?.supabaseListing)
+        .map((item) => String(item.id)))];
+      let liveRows = [];
+      if (requestedListingIds.length) {
+        const { data, error } = await client
+          .from('marketplace_listings')
+          .select('*')
+          .in('id', requestedListingIds);
+        if (error) throw error;
+        liveRows = data || [];
+        const liveById = new Map(liveRows.map((row) => [String(row.id), row]));
+        const unavailable = requestedListingIds.find((id) => {
+          const row = liveById.get(id);
+          return !row || String(row.status || '').toLowerCase() !== 'available';
+        });
+        if (unavailable) {
+          throw new Error('A listing in your bag is no longer available. Remove it and refresh the marketplace.');
+        }
+      }
+
+      const liveById = new Map(liveRows.map((row) => [String(row.id), window.normalizeAtelierMarketplaceListing(row)]));
+      const orderItems = cart.map((item) => {
+        const live = liveById.get(String(item.id));
+        const savedProduct = productFor(item.id) || {};
+        return {
+          ...savedProduct,
+          ...item,
+          ...(live || {}),
+          id: String(item.id),
+          quantity: quantityFor(item),
+          upiId: (live && live.upiId) || item.upiId || savedProduct.upiId || '',
+          contact: item.contact || savedProduct.contact || '',
+          supabaseListing: Boolean(live || item.supabaseListing),
+          seller_id: (live && live.seller_id) || item.seller_id || savedProduct.seller_id || ''
+        };
+      });
+
+      const date = localDate();
+      const orderId = createOrderId(date);
+      const deliveryMethod = document.querySelector('input[name="delivery"]:checked').value;
+      const deliveryNote = document.getElementById('delivery-note').value.trim();
+      const orderSubtotal = orderItems.reduce((sum, item) => sum + (Number(item.price) || 0) * quantityFor(item), 0);
+      const orderTotal = orderSubtotal + shippingCost();
+      const listingIds = requestedListingIds;
+
+      if (listingIds.length) {
+        const { data, error } = await client
+          .from('marketplace_listings')
+          .update({ status: 'sold' })
+          .in('id', listingIds)
+          .eq('status', 'available')
+          .select('id');
+        updatedListingIds = (data || []).map((row) => String(row.id));
+        if (error) throw error;
+        if (updatedListingIds.length !== listingIds.length) {
+          throw new Error('One or more listings changed while you were checking out. Please refresh and try again.');
+        }
+      }
+
+      const orderRows = orderItems.map((item) => ({
+        buyer_id: user.id,
+        listing_id: item.supabaseListing ? item.id : null,
+        seller_id: item.seller_id || null,
+        quantity: quantityFor(item),
+        total_price: (Number(item.price) || 0) * quantityFor(item),
+        status: 'pending'
+      }));
+      const { error: orderError } = await client.from('orders').insert(orderRows);
+      if (orderError) throw orderError;
+
+      const previousBought = readArray(boughtKey);
+      const boughtItems = orderItems.map((item) => ({
         ...item,
-        upiId: item.upiId || savedProduct.upiId || '',
-        contact: item.contact || savedProduct.contact || '',
         purchasedAt: date,
         purchaseDate: date,
         orderId,
         deliveryMethod,
         deliveryNote,
-        paymentMethod: 'COD / UPI request'
-      };
-    });
+        paymentMethod: 'UPI request'
+      }));
+      save(boughtKey, [...previousBought, ...boughtItems]);
+      const cartCleared = save(cartKey, []);
 
-    if (!save(boughtKey, [...previousBought, ...orderItems])) return;
-    if (!save(cartKey, [])) {
-      save(boughtKey, previousBought);
-      return;
+      orderPlaced = true;
+      const delivery = deliveryMethod === 'pickup' ? 'Hyderabad pickup' : 'standard courier';
+      document.getElementById('confirmation-detail').textContent = `Your ${delivery} order is recorded. Complete payment using the seller UPI details below.`;
+      document.getElementById('confirmation-order').textContent = `Order ${orderId} · ${date}`;
+      renderSellerPayments(orderItems, orderId, orderTotal);
+      document.getElementById('order-confirmation').hidden = false;
+      cartLayout.classList.add('is-complete');
+      document.getElementById('bag-tab').click();
+      cartMessage.textContent = cartCleared ? '' : 'Your order was recorded, but the browser could not clear the saved bag.';
+      render();
+    } catch (error) {
+      console.error('Unable to confirm the order with Supabase.', error);
+      if (updatedListingIds.length) {
+        try {
+          const { error: restoreError } = await window.atelierSupabase.getClient()
+            .from('marketplace_listings')
+            .update({ status: 'available' })
+            .in('id', updatedListingIds)
+            .eq('status', 'sold');
+          if (restoreError) console.error('Unable to restore listings after checkout failed.', restoreError);
+        } catch (restoreError) {
+          console.error('Unable to restore listings after checkout failed.', restoreError);
+        }
+      }
+      cartMessage.textContent = error.message || 'The order could not be saved. Please try again.';
+    } finally {
+      purchaseButton.disabled = orderPlaced || readArray(cartKey).length === 0 || !isAuthenticated();
     }
-
-    orderPlaced = true;
-    const delivery = deliveryMethod === 'pickup' ? 'Hyderabad pickup' : 'standard courier';
-    document.getElementById('confirmation-detail').textContent = `Your ${delivery} request has been saved. The seller will follow up to confirm COD or UPI details.`;
-    document.getElementById('confirmation-order').textContent = `Order ${orderId} · ${date}`;
-    renderSellerPayments(cart, orderId, orderTotal);
-    document.getElementById('order-confirmation').hidden = false;
-    cartLayout.classList.add('is-complete');
-    document.getElementById('bag-tab').click();
-    cartMessage.textContent = '';
-    render();
   }
 
   document.getElementById('bag-tab').addEventListener('click', () => {
@@ -474,5 +584,7 @@
     }
   });
   window.addEventListener('storage', render);
+  window.addEventListener('atelier:profile-updated', render);
   render();
+  loadMarketplaceListings();
 })();

@@ -5,7 +5,14 @@
   const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_0jOs1sVk5nRJj1SY9VrgKw_Eoc08C0N';
   const CLOUDINARY_CLOUD_NAME = 'lify0b3k';
   const CLOUDINARY_UPLOAD_PRESET = 'atelier_unsigned';
-  const CURRENT_USER_KEY = 'atelier_current_user';
+  const ACTIVE_PROFILE_ID_KEY = 'atelier_active_profile_id';
+  const LEGACY_PROFILE_KEYS = [
+    'atelier_profile',
+    'atelier_user',
+    'atelier_current_user',
+    'atelierUser',
+    'atelierSessionInitialized'
+  ];
 
   function getClient() {
     if (!window.supabase || typeof window.supabase.createClient !== 'function') {
@@ -44,39 +51,35 @@
       id: row.id || '',
       username: normalizeUsername(row.username),
       display_name: String(row.display_name || row.username || 'Atelier Member'),
+      email: String(row.email || ''),
       bio: String(row.bio || ''),
       avatar_url: String(row.avatar_url || ''),
       banner_url: String(row.banner_url || ''),
       role: String(row.role || 'member').toLowerCase(),
+      location: String(row.location || ''),
+      specialty: String(row.specialty || ''),
+      profile_completed: typeof row.profile_completed === 'boolean' ? row.profile_completed : null,
       role_details: row.role_details && typeof row.role_details === 'object' && !Array.isArray(row.role_details)
         ? row.role_details
         : {}
     };
   }
 
+  function profileStorageKey(userId) {
+    return `atelier_profile_${String(userId || '')}`;
+  }
+
+  function clearLegacyProfileKeys() {
+    LEGACY_PROFILE_KEYS.forEach((key) => window.localStorage.removeItem(key));
+  }
+
   function cacheProfile(profile) {
     const normalized = profileFromRow(profile);
-    const legacy = {
-      id: normalized.id,
-      username: `@${normalized.username}`,
-      name: normalized.display_name,
-      displayName: normalized.display_name,
-      email: normalized.email || '',
-      bio: normalized.bio,
-      avatarUrl: normalized.avatar_url,
-      coverUrl: normalized.banner_url,
-      bannerUrl: normalized.banner_url,
-      role: displayRole(normalized.role),
-      roleKey: normalized.role,
-      role_details: normalized.role_details,
-      roleDetails: normalized.role_details,
-      followingCount: Number(normalized.following_count) || 0,
-      followersCount: Number(normalized.followers_count) || 0
-    };
+    if (!normalized.id) throw new Error('Cannot cache a profile without a user ID.');
     try {
-      window.localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(normalized));
-      window.localStorage.setItem('atelierUser', JSON.stringify(legacy));
-      window.localStorage.setItem('atelierSessionInitialized', 'true');
+      window.localStorage.setItem(profileStorageKey(normalized.id), JSON.stringify(normalized));
+      window.localStorage.setItem(ACTIVE_PROFILE_ID_KEY, normalized.id);
+      clearLegacyProfileKeys();
     } catch (error) {
       console.error('Unable to cache the Atelier profile.', error);
       throw new Error('Could not save your profile in this browser. Check storage settings and try again.');
@@ -85,39 +88,81 @@
     return normalized;
   }
 
-  function readCachedProfile() {
+  function readCachedProfile(userId) {
     try {
-      const current = JSON.parse(window.localStorage.getItem(CURRENT_USER_KEY) || 'null');
-      if (current && typeof current === 'object' && !Array.isArray(current)) {
-        return profileFromRow(current);
-      }
-      const legacy = JSON.parse(window.localStorage.getItem('atelierUser') || 'null');
-      if (!legacy || typeof legacy !== 'object' || Array.isArray(legacy)) return null;
-      return profileFromRow({
-        id: legacy.id,
-        username: legacy.username,
-        display_name: legacy.display_name || legacy.displayName || legacy.name,
-        bio: legacy.bio,
-        avatar_url: legacy.avatar_url || legacy.avatarUrl,
-        banner_url: legacy.banner_url || legacy.bannerUrl || legacy.coverUrl,
-        role: legacy.roleKey || legacy.role,
-        role_details: legacy.role_details || legacy.roleDetails
-      });
+      const activeId = String(userId || window.localStorage.getItem(ACTIVE_PROFILE_ID_KEY) || '');
+      if (!activeId) return null;
+      const current = JSON.parse(window.localStorage.getItem(profileStorageKey(activeId)) || 'null');
+      if (!current || typeof current !== 'object' || Array.isArray(current)) return null;
+      if (String(current.id || '') !== activeId) return null;
+      return profileFromRow(current);
     } catch (error) {
       console.error('Unable to read the cached Atelier profile.', error);
       return null;
     }
   }
 
+  function clearCachedProfileActivation() {
+    try {
+      window.localStorage.removeItem(ACTIVE_PROFILE_ID_KEY);
+      clearLegacyProfileKeys();
+      window.dispatchEvent(new CustomEvent('atelier:profile-updated', { detail: null }));
+    } catch (error) {
+      console.error('Unable to clear the active Atelier profile cache.', error);
+    }
+  }
+
+  function clearAllAtelierStorage() {
+    const keys = [];
+    const errors = [];
+    try {
+      for (let index = 0; index < window.localStorage.length; index += 1) {
+        const key = window.localStorage.key(index);
+        if (key && key.startsWith('atelier_')) keys.push(key);
+      }
+    } catch (error) {
+      errors.push(error);
+    }
+
+    keys.forEach((key) => {
+      try {
+        window.localStorage.removeItem(key);
+      } catch (error) {
+        errors.push(error);
+      }
+    });
+
+    try {
+      window.dispatchEvent(new CustomEvent('atelier:profile-updated', { detail: null }));
+    } catch (error) {
+      errors.push(error);
+    }
+    return errors;
+  }
+
   function profileDefaults(user, metadata) {
     const details = metadata || user.user_metadata || {};
     const email = String(user.email || '');
-    const displayName = String(details.display_name || details.full_name || details.name || email.split('@')[0] || 'Atelier Member');
+    const emailPrefix = email.split('@')[0];
+    const googleName = [details.given_name, details.family_name].filter(Boolean).join(' ');
+    const displayName = String(details.display_name || details.full_name || details.name || googleName || emailPrefix || 'Atelier Member');
     const username = normalizeUsername(details.username || details.user_name || email.split('@')[0] || displayName) || `member_${String(user.id).slice(0, 8)}`;
     const role = ['member', 'tailor', 'seller'].includes(String(details.role || '').toLowerCase())
       ? String(details.role).toLowerCase()
       : 'member';
-    return { id: user.id, username, display_name: displayName, role };
+    return {
+      id: user.id,
+      username,
+      display_name: displayName,
+      bio: '',
+      avatar_url: '',
+      banner_url: '',
+      role,
+      location: '',
+      specialty: '',
+      profile_completed: false,
+      role_details: {}
+    };
   }
 
   async function fetchProfile(user, options) {
@@ -135,12 +180,29 @@
     }
 
     const defaults = profileDefaults(user, settings.metadata);
-    const { data: created, error: createError } = await client
-      .from('profiles')
-      .upsert(defaults, { onConflict: 'id' })
-      .select('*')
-      .single();
-    if (createError) throw createError;
+    const optionalColumns = ['location', 'specialty', 'profile_completed'];
+    const profileDefaultsPayload = { ...defaults };
+    let created;
+    while (true) {
+      const { data, error: createError } = await client
+        .from('profiles')
+        .upsert(profileDefaultsPayload, { onConflict: 'id' })
+        .select('*')
+        .single();
+      if (!createError) {
+        created = data;
+        break;
+      }
+
+      const errorText = `${createError.message || ''} ${createError.details || ''}`.toLowerCase();
+      const missingColumn = ['42703', 'PGRST204'].includes(createError.code)
+        && optionalColumns.find((column) => (
+          Object.prototype.hasOwnProperty.call(profileDefaultsPayload, column)
+          && errorText.includes(column)
+        ));
+      if (!missingColumn) throw createError;
+      delete profileDefaultsPayload[missingColumn];
+    }
     return profileFromRow(created);
   }
 
@@ -173,13 +235,22 @@
     return result.secure_url;
   }
 
+  try {
+    clearLegacyProfileKeys();
+  } catch (error) {
+    console.error('Unable to remove the legacy shared profile cache.', error);
+  }
+
   window.atelierSupabase = Object.freeze({
-    currentUserKey: CURRENT_USER_KEY,
+    activeProfileIdKey: ACTIVE_PROFILE_ID_KEY,
     getClient,
     normalizeUsername,
     displayRole,
     profileFromRow,
     cacheProfile,
+    clearCachedProfileActivation,
+    clearAllAtelierStorage,
+    profileStorageKey,
     readCachedProfile,
     fetchProfile,
     cacheAuthenticatedProfile,

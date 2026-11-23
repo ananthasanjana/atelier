@@ -74,9 +74,12 @@
             <p class="community-eyebrow">MAKE, MEND, SHARE</p>
             <h2 id="community-title">Community feed</h2>
           </div>
-          <div class="community-filters" role="group" aria-label="Filter community posts">
-            <button type="button" class="is-active" data-filter="recent" aria-pressed="true">Recents</button>
-            <button type="button" data-filter="friends" aria-pressed="false">Friends</button>
+          <div class="community-feed-header__actions">
+            <button type="button" class="community-new-post" id="community-new-post" data-auth-only hidden>＋ New Post</button>
+            <div class="community-filters" role="group" aria-label="Filter community posts">
+              <button type="button" class="is-active" data-filter="recent" aria-pressed="true">Recents</button>
+              <button type="button" data-filter="friends" aria-pressed="false">Friends</button>
+            </div>
           </div>
         </header>
 
@@ -86,6 +89,18 @@
 
         <a class="community-login-prompt" id="community-login-prompt" href="login.html">Log in to share a repair, a tip, or a thrift find.</a>
         <form class="community-composer" id="community-composer" hidden>
+          <label class="community-composer__destination" for="community-post-topic">
+            Share to
+            <select id="community-post-topic" name="topic">
+              <option value="home">Home Feed</option>
+              <optgroup label="Style Forum">
+                <option value="Mending Tips">Mending Tips</option>
+                <option value="Thrift Hauls">Thrift Hauls</option>
+                <option value="Upcycling">Upcycling</option>
+                <option value="Fabric Care">Fabric Care</option>
+              </optgroup>
+            </select>
+          </label>
           <label class="visually-hidden" for="community-post-text">Share your thoughts</label>
           <textarea id="community-post-text" name="content" rows="2" maxlength="1200" placeholder="Share your thoughts...."></textarea>
           <div class="community-composer__preview" id="community-composer-preview" hidden>
@@ -104,6 +119,14 @@
       </section>
 
       <aside class="community-right" aria-label="Discover people and makers">
+        <section class="community-member-search" aria-labelledby="community-member-search-title">
+          <p class="community-eyebrow">FIND YOUR PEOPLE</p>
+          <h2 id="community-member-search-title">Members &amp; tailors</h2>
+          <label class="visually-hidden" for="community-member-search-input">Search members and tailors</label>
+          <input id="community-member-search-input" type="search" placeholder="Search members &amp; tailors..." autocomplete="off">
+          <p class="community-member-search__status" id="community-member-search-status" role="status" aria-live="polite" hidden></p>
+          <div class="community-member-search__results" id="community-member-search-results" role="list" hidden></div>
+        </section>
         <section class="community-discover-card">
           <p class="community-eyebrow">MEET YOUR MAKERS</p>
           <h2>Discover</h2>

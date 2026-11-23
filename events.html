@@ -130,7 +130,6 @@
           <p class="events-dialog__message" id="event-rsvp-message" role="status" aria-live="polite" hidden></p>
           <div class="events-dialog__actions">
             <button class="events-rsvp-button" id="event-rsvp-button" type="button">RSVP / Save Spot</button>
-            <button class="events-cancel-button" id="event-unrsvp-button" type="button" hidden>Cancel RSVP</button>
           </div>
         </div>
       </div>
@@ -151,12 +150,12 @@
           <option>Workshop</option>
           <option>Donation Drive</option>
         </select>
-        <label for="host-event-date">Date <span>(optional)</span></label>
-        <input id="host-event-date" name="date" type="date">
+        <label for="host-event-date">Event Date</label>
+        <input id="host-event-date" name="date" type="date" required>
         <label for="host-event-details">A few details</label>
         <textarea id="host-event-details" name="details" rows="4" maxlength="800" required></textarea>
-        <label for="host-event-contact">Your contact <span>(optional)</span></label>
-        <input id="host-event-contact" name="contact" type="text" maxlength="120">
+        <label for="host-event-contact">Contact Info</label>
+        <input id="host-event-contact" name="contact" type="text" maxlength="120" placeholder="Phone, WhatsApp, or @instagram" required>
         <p class="events-dialog__message" id="host-message" role="status" aria-live="polite" hidden></p>
         <button class="events-rsvp-button" type="submit">Send Event Proposal</button>
       </form>
@@ -164,6 +163,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/atelier-supabase.js"></script>
+    <script src="js/atelier-auth.js"></script>
     <script src="js/nav-auth.js"></script>
     <script src="js/events.js"></script>
   </body>

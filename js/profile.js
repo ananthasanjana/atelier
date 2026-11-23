@@ -39,15 +39,17 @@ function readFileAsDataUrl(file) {
 
 document.addEventListener('DOMContentLoaded', () => {
   const defaultProfile = {
-    name: 'sanj',
+    name: '',
     id: '',
-    username: '@sanjs4n',
-    bio: 'born cool like that\nim a college student who loves fashion and loves to thrift!\nhop along for some cool tips lol',
+    username: '',
+    bio: '',
     role: 'Member',
+    roleDetails: {},
     avatarUrl: '',
     coverUrl: '',
-    followingCount: 125,
-    followersCount: 578
+    profileCompleted: null,
+    followingCount: 0,
+    followersCount: 0
   };
   const supportedRoles = ['Member', 'Student', 'Tailor', 'Tailor / Designer', 'Seller'];
   const elements = {
@@ -56,15 +58,44 @@ document.addEventListener('DOMContentLoaded', () => {
     bio: document.getElementById('profile-bio'),
     followingCount: document.getElementById('profile-following-count'),
     followerCount: document.getElementById('profile-follower-count'),
+    connectionButtons: document.querySelectorAll('[data-open-connections]'),
+    connectionsDialog: document.getElementById('profile-connections-dialog'),
+    connectionsTabs: document.querySelectorAll('[data-connections-tab]'),
+    connectionsStatus: document.getElementById('profile-connections-status'),
+    connectionsList: document.getElementById('profile-connections-list'),
+    welcomeBanner: document.getElementById('profile-welcome'),
     role: document.getElementById('profile-role'),
     roleIcon: document.getElementById('profile-role-icon'),
     roleDetails: document.getElementById('profile-role-details'),
+    tailorStudio: document.getElementById('profile-tailor-studio'),
+    tailorLocation: document.getElementById('profile-tailor-location'),
+    tailorSpecialty: document.getElementById('profile-tailor-specialty'),
+    tailorPriceRange: document.getElementById('profile-tailor-price-range'),
+    tailorContact: document.getElementById('profile-tailor-contact'),
+    tailorEditButton: document.getElementById('profile-tailor-edit'),
+    tailorStudioDialog: document.getElementById('profile-tailor-studio-dialog'),
+    tailorStudioForm: document.getElementById('profile-tailor-studio-form'),
+    tailorStudioNameInput: document.getElementById('profile-tailor-studio-name'),
+    tailorStudioLocationInput: document.getElementById('profile-tailor-studio-location'),
+    tailorStudioSpecialtySelect: document.getElementById('profile-tailor-studio-specialty'),
+    tailorStudioCustomSpecialtyInput: document.getElementById('profile-tailor-studio-custom-specialty'),
+    tailorStudioPriceInput: document.getElementById('profile-tailor-studio-price'),
+    tailorStudioContactInput: document.getElementById('profile-tailor-studio-contact'),
+    tailorStudioBioInput: document.getElementById('profile-tailor-studio-bio'),
+    tailorStudioMessage: document.getElementById('profile-tailor-studio-message'),
     avatar: document.getElementById('profile-avatar-image'),
     avatarFallback: document.getElementById('profile-avatar-fallback'),
     cover: document.getElementById('profile-cover-image'),
     coverFallback: document.getElementById('profile-cover-fallback'),
     editDialog: document.getElementById('profile-edit-dialog'),
     editForm: document.getElementById('profile-edit-form'),
+    deleteAccountButton: document.getElementById('profile-delete-account-button'),
+    deleteDialog: document.getElementById('profile-delete-dialog'),
+    deleteForm: document.getElementById('profile-delete-form'),
+    deleteConfirmationInput: document.getElementById('profile-delete-confirmation'),
+    deleteMessage: document.getElementById('profile-delete-message'),
+    deleteCancelButton: document.getElementById('profile-delete-cancel'),
+    deleteSubmitButton: document.getElementById('profile-delete-submit'),
     threadDialog: document.getElementById('post-dialog'),
     threadTitle: document.getElementById('thread-title'),
     threadUsername: document.getElementById('thread-username'),
@@ -107,30 +138,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function loadProfile() {
     try {
-      const saved = window.localStorage.getItem('atelier_current_user')
-        || window.localStorage.getItem('atelierUser');
-      if (!saved) {
-        return { ...defaultProfile };
-      }
-
-      const storedProfile = JSON.parse(saved);
-      if (!storedProfile || typeof storedProfile !== 'object' || Array.isArray(storedProfile)) {
-        throw new Error('Stored profile data is not an object.');
-      }
+      const storedProfile = window.atelierSupabase.readCachedProfile();
+      if (!storedProfile) return { ...defaultProfile };
 
       return {
         ...defaultProfile,
         ...storedProfile,
-        id: storedProfile.id || '',
-        name: storedProfile.display_name || storedProfile.displayName || storedProfile.name || defaultProfile.name,
-        username: `@${normalizeHandle(storedProfile.username || defaultProfile.username)}`,
+        id: String(storedProfile.id || ''),
+        name: storedProfile.display_name || defaultProfile.name,
+        username: storedProfile.username ? `@${normalizeHandle(storedProfile.username)}` : '',
         bio: typeof storedProfile.bio === 'string' ? storedProfile.bio : defaultProfile.bio,
         role: normalizeRole(storedProfile.role),
         roleDetails: storedProfile.role_details || storedProfile.roleDetails || {},
         avatarUrl: storedProfile.avatar_url || storedProfile.avatarUrl || '',
         coverUrl: storedProfile.banner_url || storedProfile.bannerUrl || storedProfile.coverUrl || '',
-        followingCount: readCount(storedProfile.followingCount, storedProfile.following, 125),
-        followersCount: readCount(storedProfile.followersCount, storedProfile.followerCount, 578)
+        profileCompleted: typeof storedProfile.profile_completed === 'boolean'
+          ? storedProfile.profile_completed
+          : null,
+        followingCount: readCount(storedProfile.followingCount, storedProfile.following, 0),
+        followersCount: readCount(storedProfile.followersCount, storedProfile.followerCount, 0)
       };
     } catch (error) {
       console.error('Unable to load the Atelier profile from localStorage.', error);
@@ -151,19 +177,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function hasAuthenticatedUser() {
     try {
-      const saved = JSON.parse(
-        window.localStorage.getItem('atelier_current_user')
-        || window.localStorage.getItem('atelierUser')
-        || 'null'
-      );
-      return Boolean(
-        saved
-        && typeof saved === 'object'
-        && !Array.isArray(saved)
-        && ['name', 'username', 'email'].some((field) => (
-          typeof saved[field] === 'string' && saved[field].trim()
-        ))
-      );
+      const saved = window.atelierSupabase.readCachedProfile();
+      return Boolean(saved && saved.id);
     } catch (error) {
       console.error('Unable to verify the Atelier user session.', error);
       return false;
@@ -198,11 +213,13 @@ document.addEventListener('DOMContentLoaded', () => {
   let viewerIsAuthenticated = hasAuthenticatedUser();
   const requestedUser = new URLSearchParams(window.location.search).get('user');
   const requestedHandle = normalizeHandle(requestedUser);
-  let isPublicProfile = Boolean(requestedHandle);
+  const requestedProfileId = new URLSearchParams(window.location.search).get('id') || '';
+  let isPublicProfile = Boolean(requestedHandle || requestedProfileId);
+  let tailorRecord = null;
+  let accountDeletionCompleted = false;
+  let accountDeletionInProgress = false;
 
   function getPublicProfile(handle) {
-    const aliases = window.ATELIER_PUBLIC_PROFILE_ALIASES || {};
-    handle = aliases[handle] || handle;
     if (
       viewerIsAuthenticated
       && normalizeHandle(viewerProfile.username) === handle
@@ -210,35 +227,26 @@ document.addEventListener('DOMContentLoaded', () => {
       return { ...viewerProfile };
     }
 
-    const profiles = window.ATELIER_PUBLIC_PROFILES || {};
-    const seeded = profiles[handle]
-      || Object.values(profiles).find((candidate) => (
-        normalizeHandle(candidate.name) === handle
-        || normalizeHandle(candidate.username) === handle
-      ));
     const shop = getLocalTailor(handle);
     if (shop) {
       return {
-        ...(seeded || {}),
-        name: shop.name || (seeded && seeded.name) || handle,
+        ...defaultProfile,
+        name: shop.name || handle,
         username: `@${handle}`,
-        bio: shop.bio || (seeded && seeded.bio) || 'A local tailor listed by the Atelier community.',
-        role: shop.is_verified ? 'Verified Tailor' : 'Tailor',
-        avatarUrl: shop.image || (seeded && seeded.avatarUrl) || '',
-        coverUrl: shop.coverUrl || (seeded && seeded.coverUrl) || '',
-        followingCount: readCount(shop.followingCount, shop.following, 68),
+        bio: String(shop.bio || ''),
+        role: normalizeRole(shop.role),
+        avatarUrl: shop.image || shop.avatar_url || '',
+        coverUrl: shop.coverUrl || shop.banner_url || '',
+        followingCount: readCount(shop.followingCount, shop.following, 0),
         followersCount: readCount(shop.followersCount, shop.followers, 0)
       };
-    }
-    if (seeded) {
-      return { ...defaultProfile, ...seeded };
     }
 
     return {
       ...defaultProfile,
       name: handle || defaultProfile.name,
       username: `@${handle}`,
-      bio: 'Atelier community member',
+      bio: '',
       role: 'Member',
       followingCount: 0,
       followersCount: 0
@@ -247,6 +255,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
   let profile = isPublicProfile ? getPublicProfile(requestedHandle) : viewerProfile;
   let publicHandle = isPublicProfile ? normalizeHandle(profile.username) : requestedHandle;
+  let supabaseClient = null;
+  let currentUserId = '';
+  let currentProfileFollowing = false;
+  let connectionDataLoaded = false;
+  let connectionDataError = false;
+  let followActionPending = false;
+  let connectionsMode = 'followers';
+  let connectionsRequestId = 0;
+  let connectionFollowIds = new Set();
+  let connectionsPeople = [];
 
   function updateRoleIcon(role) {
     const icons = {
@@ -258,10 +276,86 @@ document.addEventListener('DOMContentLoaded', () => {
     elements.roleIcon.innerHTML = icons[role] || icons.Member;
   }
 
+  function isTailorRole(role) {
+    const normalized = String(role || '').trim().toLowerCase();
+    return normalized === 'tailor'
+      || normalized === 'tailor / designer'
+      || normalized === 'verified tailor';
+  }
+
+  function isExplicitTailorRole(role) {
+    const normalized = String(role || '').trim().toLowerCase();
+    return normalized === 'tailor' || normalized === 'tailor / designer';
+  }
+
+  function isMissingProfileColumn(error, columns) {
+    if (!error || !['42703', 'PGRST204'].includes(error.code)) return false;
+    const message = `${error.message || ''} ${error.details || ''}`.toLowerCase();
+    return columns.some((column) => message.includes(column));
+  }
+
+  function firstTailorValue(source, keys) {
+    for (const key of keys) {
+      const value = source && source[key];
+      if (Array.isArray(value) && value.length) return value.join(', ');
+      if (value != null && String(value).trim()) return String(value).trim();
+    }
+    return '';
+  }
+
+  function renderTailorStudio() {
+    const isTailor = isExplicitTailorRole(profile.role);
+    const canEdit = isTailor
+      && !isPublicProfile
+      && viewerIsAuthenticated
+      && profile.id
+      && String(profile.id) === String(viewerProfile.id);
+    elements.tailorStudio.hidden = !isTailor;
+    elements.tailorEditButton.hidden = !canEdit;
+    if (!isTailor) return;
+
+    const details = profile.roleDetails && typeof profile.roleDetails === 'object'
+      ? profile.roleDetails
+      : {};
+    const location = firstTailorValue(tailorRecord, ['neighborhood', 'area'])
+      || firstTailorValue(tailorRecord, ['address', 'street', 'studio_address', 'location'])
+      || String(details.neighborhood || '');
+    const minPrice = firstTailorValue(tailorRecord, ['min_price', 'price_min']);
+    const maxPrice = firstTailorValue(tailorRecord, ['max_price', 'price_max']);
+    const listedPrice = firstTailorValue(tailorRecord, ['price']);
+    let priceRange = firstTailorValue(tailorRecord, ['price_range', 'priceRange', 'pricing']);
+    if (!priceRange && (minPrice || maxPrice)) {
+      priceRange = [minPrice && `₹${minPrice}`, maxPrice && `₹${maxPrice}`].filter(Boolean).join(' – ');
+    } else if (!priceRange && listedPrice) {
+      priceRange = Number.isFinite(Number(listedPrice)) ? `Starting at ₹${listedPrice}` : listedPrice;
+    }
+    priceRange = priceRange || String(details.price_range || '');
+    elements.tailorLocation.textContent = location || 'Not listed yet';
+    elements.tailorSpecialty.textContent = firstTailorValue(
+      tailorRecord,
+      ['specialty', 'specialties', 'specialization', 'services']
+    ) || String(details.specialty || 'Not listed yet');
+    elements.tailorPriceRange.textContent = priceRange || 'Ask for a quote';
+    elements.tailorContact.textContent = firstTailorValue(
+      tailorRecord,
+      ['contact', 'contact_info', 'phone', 'contact_phone', 'whatsapp', 'email']
+    ) || String(details.whatsapp || details.contact || 'Not listed yet');
+  }
+
   function renderProfile() {
     elements.name.textContent = profile.name;
     elements.username.textContent = profile.username;
-    elements.bio.textContent = profile.bio;
+    elements.bio.textContent = profile.bio || 'No bio yet.';
+    renderTailorStudio();
+    const isOwnProfile = !isPublicProfile
+      && viewerIsAuthenticated
+      && currentUserId
+      && String(profile.id) === currentUserId;
+    elements.deleteAccountButton.hidden = !isOwnProfile;
+    elements.welcomeBanner.hidden = !(
+      isOwnProfile
+      && (profile.profileCompleted === false || !String(profile.bio || '').trim())
+    );
     const details = profile.roleDetails && typeof profile.roleDetails === 'object'
       ? Object.entries(profile.roleDetails)
         .filter(([, value]) => typeof value === 'string' && value.trim())
@@ -269,10 +363,11 @@ document.addEventListener('DOMContentLoaded', () => {
       : [];
     elements.roleDetails.textContent = details.join(' · ');
     elements.roleDetails.hidden = details.length === 0;
-    elements.followingCount.textContent = String(readCount(profile.followingCount, profile.following, 125));
-    elements.followerCount.textContent = String(readCount(profile.followersCount, profile.followerCount, 578));
-    elements.role.textContent = profile.role;
-    updateRoleIcon(profile.role);
+    elements.followingCount.textContent = profile.id ? '…' : '0';
+    elements.followerCount.textContent = profile.id ? '…' : '0';
+    const displayRole = isExplicitTailorRole(profile.role) ? 'Tailor / Designer' : 'Member';
+    elements.role.textContent = displayRole;
+    updateRoleIcon(displayRole);
     document.body.classList.toggle('profile-page--public', isPublicProfile);
     document.title = isPublicProfile ? `${profile.name} | Atelier` : 'Profile | Atelier';
     elements.editButton.hidden = isPublicProfile;
@@ -318,6 +413,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function cacheProfileForLegacyPages(row) {
     const cached = window.atelierSupabase.cacheProfile(row);
+    const roleDetails = cached.role_details && typeof cached.role_details === 'object'
+      ? cached.role_details
+      : {};
     profile = {
       ...profile,
       id: cached.id,
@@ -325,34 +423,66 @@ document.addEventListener('DOMContentLoaded', () => {
       username: `@${cached.username}`,
       bio: cached.bio || '',
       role: normalizeRole(cached.role),
-      roleDetails: cached.role_details,
+      roleDetails: {
+        ...roleDetails,
+        neighborhood: cached.location || roleDetails.neighborhood || '',
+        specialty: cached.specialty || roleDetails.specialty || ''
+      },
       avatarUrl: cached.avatar_url,
-      coverUrl: cached.banner_url
+      coverUrl: cached.banner_url,
+      profileCompleted: typeof cached.profile_completed === 'boolean' ? cached.profile_completed : null
     };
     viewerProfile = { ...profile };
     return cached;
   }
 
   function profileFromDatabaseRow(row) {
+    const roleDetails = row.role_details && typeof row.role_details === 'object' ? row.role_details : {};
     return {
       id: row.id || '',
       name: String(row.display_name || row.username || 'Atelier Member'),
       username: `@${normalizeHandle(row.username)}`,
       bio: String(row.bio || ''),
       role: normalizeRole(row.role),
-      roleDetails: row.role_details && typeof row.role_details === 'object' ? row.role_details : {},
+      roleDetails: {
+        ...roleDetails,
+        neighborhood: row.location || roleDetails.neighborhood || '',
+        specialty: row.specialty || roleDetails.specialty || ''
+      },
       avatarUrl: String(row.avatar_url || ''),
       coverUrl: String(row.banner_url || ''),
+      profileCompleted: typeof row.profile_completed === 'boolean' ? row.profile_completed : null,
       followingCount: readCount(row.following_count, row.following, 0),
       followersCount: readCount(row.followers_count, row.follower_count, 0)
     };
   }
 
-  async function loadProfileFromSupabase() {
+  async function loadTailorRecord(client) {
+    tailorRecord = null;
+    const userId = profile.id || requestedProfileId;
+    if (!userId) return;
     try {
-      const client = window.atelierSupabase.getClient();
+      const { data, error } = await client
+        .from('tailors')
+        .select('*')
+        .eq('user_id', userId)
+        .limit(1);
+      if (error) throw error;
+      tailorRecord = data && data.length ? data[0] : null;
+    } catch (error) {
+      console.error('Unable to load Atelier studio details for this profile.', error);
+      showProfileToast(`Studio location details could not be loaded: ${error.message}`, 'error');
+    }
+  }
+
+  async function loadProfileFromSupabase() {
+    let client = null;
+    try {
+      client = window.atelierSupabase.getClient();
+      supabaseClient = client;
       const session = await window.atelierSupabase.getSession();
       viewerIsAuthenticated = Boolean(session && session.user);
+      currentUserId = viewerIsAuthenticated ? String(session.user.id || '') : '';
       const oauthCallback = window.location.hash.includes('access_token=')
         || new URLSearchParams(window.location.search).has('code');
 
@@ -370,70 +500,95 @@ document.addEventListener('DOMContentLoaded', () => {
           row = data;
         }
         const cached = cacheProfileForLegacyPages(row);
-        const isViewingSelf = requestedHandle && requestedHandle === normalizeHandle(cached.username);
+        const isViewingSelf = requestedHandle
+          ? requestedHandle === normalizeHandle(cached.username)
+          : !requestedProfileId || requestedProfileId === String(cached.id);
         if (!requestedHandle || isViewingSelf) {
-          isPublicProfile = false;
-          profile = { ...viewerProfile };
-          publicHandle = normalizeHandle(profile.username);
+          if (isViewingSelf) {
+            isPublicProfile = false;
+            profile = { ...viewerProfile };
+            publicHandle = normalizeHandle(profile.username);
+          } else {
+            isPublicProfile = true;
+          }
         } else {
           isPublicProfile = true;
         }
-      } else if (!requestedHandle) {
+      } else if (!requestedHandle && !requestedProfileId) {
         window.location.assign('login.html');
         return;
       }
 
-      if (requestedHandle && isPublicProfile) {
-        const { data, error } = await client
-          .from('profiles')
-          .select('*')
-          .ilike('username', requestedHandle)
-          .limit(1);
+      if ((requestedHandle || requestedProfileId) && isPublicProfile) {
+        const query = client.from('profiles').select('*');
+        const { data, error } = requestedProfileId
+          ? await query.eq('id', requestedProfileId).limit(1)
+          : await query.ilike('username', requestedHandle).limit(1);
         if (error) throw error;
-        if (data && data.length) profile = profileFromDatabaseRow(data[0]);
-        else profile = getPublicProfile(requestedHandle);
+        if (data && data.length) {
+          profile = profileFromDatabaseRow(data[0]);
+        } else if (requestedHandle) {
+          profile = getPublicProfile(requestedHandle);
+        } else {
+          profile = {
+            ...defaultProfile,
+            id: requestedProfileId,
+            name: 'Atelier Member',
+            username: `@${requestedProfileId}`,
+            bio: 'Atelier community member',
+            role: 'Member',
+            followingCount: 0,
+            followersCount: 0
+          };
+        }
         publicHandle = normalizeHandle(profile.username);
       }
 
+      await loadTailorRecord(client);
       renderProfile();
+      await refreshProfileConnections();
       renderFollowButton();
       setProfileTab('posts');
       renderPublicPosts();
+      syncConnectionsFromUrl();
       await Promise.all([loadRemotePublicPosts(), loadProfileListings(), loadProfileLookbook()]);
 
       if (oauthCallback && viewerIsAuthenticated) {
         window.localStorage.removeItem('atelierPendingRole');
-        const destination = window.atelierAuth.consumeRedirectAfterLogin('profile.html');
-        const currentPage = `${window.location.pathname}${window.location.search}`;
-        if (destination !== 'profile.html' && !destination.endsWith(currentPage)) {
-          window.location.assign(destination);
-        } else {
-          window.history.replaceState(null, '', window.location.pathname);
-        }
+        window.atelierAuth.consumeRedirectAfterLogin('profile.html');
+        window.history.replaceState(null, '', window.location.pathname);
       }
     } catch (error) {
       console.error('Unable to load the Atelier profile from Supabase.', error);
-      if (!requestedHandle && !viewerIsAuthenticated) {
+      if (!requestedHandle && !requestedProfileId && !viewerIsAuthenticated) {
         window.location.assign('login.html');
         return;
       }
       showProfileToast(`Could not load the profile from Supabase: ${error.message}`, 'error');
-      if (requestedHandle) {
-        profile = getPublicProfile(requestedHandle);
+      if (requestedHandle || requestedProfileId) {
+        profile = requestedHandle
+          ? getPublicProfile(requestedHandle)
+          : {
+            ...defaultProfile,
+            id: requestedProfileId,
+            name: 'Atelier Member',
+            username: `@${requestedProfileId}`,
+            bio: 'Atelier community member',
+            role: 'Member',
+            followingCount: 0,
+            followersCount: 0
+          };
         isPublicProfile = true;
         publicHandle = normalizeHandle(profile.username);
+        if (client) await loadTailorRecord(client);
         renderProfile();
+        await refreshProfileConnections();
         renderFollowButton();
         renderPublicPosts();
+        syncConnectionsFromUrl();
         await Promise.all([loadProfileListings(), loadProfileLookbook()]);
       }
     }
-  }
-
-  function getFollowingStorageKey() {
-    const viewerHandle = viewerProfile && viewerProfile.username ? viewerProfile.username : '@guest';
-    const key = normalizeHandle(viewerHandle).replace(/[^a-z0-9_-]/g, '-');
-    return `atelier_community_${key}_following`;
   }
 
   function renderFollowButton() {
@@ -443,29 +598,320 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!viewerIsAuthenticated) {
       elements.followButton.textContent = 'Log in to follow';
       elements.followButton.setAttribute('aria-pressed', 'false');
+      elements.followButton.disabled = false;
       return;
     }
-    if (normalizeHandle(viewerProfile.username) === publicHandle) {
+    if ((currentUserId && String(profile.id) === currentUserId)
+      || normalizeHandle(viewerProfile.username) === publicHandle) {
       elements.followButton.textContent = 'Your profile';
       elements.followButton.disabled = true;
       elements.followButton.setAttribute('aria-pressed', 'false');
       return;
     }
-    const following = readStoredArray(getFollowingStorageKey())
-      .map(normalizeHandle)
-      .includes(publicHandle);
-    elements.followButton.textContent = following ? 'Following' : 'Follow';
-    elements.followButton.classList.toggle('is-following', following);
-    elements.followButton.setAttribute('aria-pressed', String(following));
+    if (!profile.id) {
+      elements.followButton.textContent = 'Profile unavailable';
+      elements.followButton.disabled = true;
+      elements.followButton.setAttribute('aria-pressed', 'false');
+      return;
+    }
+    if (!connectionDataLoaded) {
+      elements.followButton.textContent = 'Loading…';
+      elements.followButton.disabled = true;
+      return;
+    }
+    if (connectionDataError) {
+      elements.followButton.textContent = 'Follow unavailable';
+      elements.followButton.disabled = true;
+      return;
+    }
+    elements.followButton.disabled = followActionPending;
+    elements.followButton.textContent = currentProfileFollowing ? 'Following ✓' : 'Follow';
+    elements.followButton.classList.toggle('is-following', currentProfileFollowing);
+    elements.followButton.setAttribute('aria-pressed', String(currentProfileFollowing));
+  }
+
+  function updateConnectionUrl(tabName) {
+    const params = new URLSearchParams(window.location.search);
+    if (!params.has('user') && !params.has('id') && profile.username) {
+      params.set('user', normalizeHandle(profile.username));
+    }
+    params.set('tab', tabName);
+    window.history.replaceState(window.history.state, '', `${window.location.pathname}?${params.toString()}`);
+  }
+
+  function clearConnectionUrl() {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('tab') !== 'followers' && params.get('tab') !== 'following') return;
+    params.delete('tab');
+    if (!requestedHandle && !requestedProfileId) params.delete('user');
+    const query = params.toString();
+    window.history.replaceState(window.history.state, '', `${window.location.pathname}${query ? `?${query}` : ''}`);
+  }
+
+  function updateConnectionsTabs() {
+    elements.connectionsTabs.forEach((tab) => {
+      const selected = tab.dataset.connectionsTab === connectionsMode;
+      tab.setAttribute('aria-selected', String(selected));
+    });
+  }
+
+  function connectionProfileHref(person) {
+    const username = normalizeHandle(person.username);
+    return username
+      ? `profile.html?user=${encodeURIComponent(username)}`
+      : `profile.html?id=${encodeURIComponent(String(person.id || ''))}`;
+  }
+
+  function renderConnectionsList() {
+    elements.connectionsList.replaceChildren();
+    if (!connectionsPeople.length) return;
+
+    connectionsPeople.forEach((person) => {
+      const row = document.createElement('article');
+      row.className = 'profile-connection-row';
+      const link = document.createElement('a');
+      link.className = 'profile-connection-row__person';
+      link.href = connectionProfileHref(person);
+      link.setAttribute('aria-label', `View ${person.name}'s profile`);
+      if (person.avatarUrl) {
+        const avatar = document.createElement('img');
+        avatar.className = 'profile-connection-row__avatar';
+        avatar.src = person.avatarUrl;
+        avatar.alt = '';
+        avatar.loading = 'lazy';
+        link.append(avatar);
+      } else {
+        const fallback = document.createElement('span');
+        fallback.className = 'profile-connection-row__avatar profile-connection-row__fallback';
+        fallback.textContent = person.name.charAt(0).toUpperCase() || '?';
+        fallback.setAttribute('aria-hidden', 'true');
+        link.append(fallback);
+      }
+
+      const details = document.createElement('span');
+      details.className = 'profile-connection-row__details';
+      const name = document.createElement('strong');
+      name.textContent = person.name;
+      const handle = document.createElement('span');
+      handle.textContent = person.username ? `@${normalizeHandle(person.username)}` : 'Atelier member';
+      const role = document.createElement('span');
+      const isTailor = isTailorRole(person.role);
+      role.className = `profile-connection-row__role${isTailor ? ' profile-connection-row__role--tailor' : ''}`;
+      role.textContent = isTailor ? 'Tailor' : 'Member';
+      const viewProfile = document.createElement('span');
+      viewProfile.className = 'profile-connection-row__view';
+      viewProfile.textContent = 'View Profile →';
+      details.append(name, handle, role, viewProfile);
+      link.append(details);
+      row.append(link);
+
+      if (viewerIsAuthenticated && currentUserId && String(person.id) !== currentUserId) {
+        const isFollowing = connectionFollowIds.has(String(person.id));
+        const button = document.createElement('button');
+        button.className = `profile-connection-row__follow${isFollowing ? ' is-following' : ''}`;
+        button.type = 'button';
+        button.dataset.personFollow = String(person.id);
+        button.disabled = followActionPending;
+        button.setAttribute('aria-pressed', String(isFollowing));
+        button.textContent = isFollowing ? 'Following ✓' : 'Follow';
+        row.append(button);
+      }
+      elements.connectionsList.append(row);
+    });
+  }
+
+  async function loadConnectionsList() {
+    const requestId = ++connectionsRequestId;
+    elements.connectionsStatus.textContent = 'Loading connections…';
+    elements.connectionsList.replaceChildren();
+    if (!supabaseClient || !profile.id) {
+      elements.connectionsStatus.textContent = 'Connections are unavailable for this profile.';
+      return;
+    }
+
+    try {
+      const isFollowers = connectionsMode === 'followers';
+      const relationshipColumn = isFollowers ? 'following_id' : 'follower_id';
+      const personColumn = isFollowers ? 'follower_id' : 'following_id';
+      const { data: relationships, error: relationshipError } = await supabaseClient
+        .from('follows')
+        .select('follower_id, following_id')
+        .eq(relationshipColumn, profile.id);
+      if (relationshipError) throw relationshipError;
+      const personIds = [...new Set((relationships || []).map((row) => String(row[personColumn])).filter(Boolean))];
+      if (!personIds.length) {
+        if (requestId === connectionsRequestId) {
+          connectionsPeople = [];
+          elements.connectionsStatus.textContent = `No ${connectionsMode} yet.`;
+        }
+        return;
+      }
+
+      let { data: profiles, error: profilesError } = await supabaseClient
+        .from('profiles')
+        .select('id, username, display_name, avatar_url, role')
+        .in('id', personIds);
+      if (profilesError) {
+        console.info('The profiles table has no display_name column; trying full_name.');
+        const fullNameResult = await supabaseClient
+          .from('profiles')
+          .select('id, username, full_name, avatar_url, role')
+          .in('id', personIds);
+        profiles = fullNameResult.data;
+        profilesError = fullNameResult.error;
+      }
+      if (profilesError) throw profilesError;
+      if (requestId !== connectionsRequestId) return;
+
+      const profileById = new Map((profiles || []).map((row) => [String(row.id), row]));
+      connectionsPeople = personIds.map((id) => {
+        const row = profileById.get(id);
+        if (!row) return null;
+        return {
+          id,
+          username: String(row.username || ''),
+          name: String(row.full_name || row.display_name || row.username || 'Atelier member'),
+          avatarUrl: String(row.avatar_url || ''),
+          role: String(row.role || '')
+        };
+      }).filter(Boolean);
+
+      if (currentUserId && connectionsPeople.length) {
+        const { data: followedRows, error: followedError } = await supabaseClient
+          .from('follows')
+          .select('following_id')
+          .eq('follower_id', currentUserId)
+          .in('following_id', connectionsPeople.map((person) => person.id));
+        if (followedError) throw followedError;
+        connectionFollowIds = new Set((followedRows || []).map((row) => String(row.following_id)));
+      }
+      if (requestId !== connectionsRequestId) return;
+      elements.connectionsStatus.textContent = connectionsPeople.length
+        ? ''
+        : `No visible ${connectionsMode} yet.`;
+      renderConnectionsList();
+    } catch (error) {
+      if (requestId !== connectionsRequestId) return;
+      console.error(`Could not load profile ${connectionsMode}.`, error);
+      elements.connectionsStatus.textContent = `Could not load ${connectionsMode}: ${error.message || 'Please try again.'}`;
+    }
+  }
+
+  async function openConnections(tabName, updateUrl) {
+    connectionsMode = tabName === 'following' ? 'following' : 'followers';
+    updateConnectionsTabs();
+    if (updateUrl !== false) updateConnectionUrl(connectionsMode);
+    if (!elements.connectionsDialog.open) elements.connectionsDialog.showModal();
+    await loadConnectionsList();
+  }
+
+  function syncConnectionsFromUrl() {
+    const tabName = new URLSearchParams(window.location.search).get('tab');
+    if (tabName === 'followers' || tabName === 'following') {
+      openConnections(tabName, false);
+    } else if (elements.connectionsDialog.open) {
+      elements.connectionsDialog.close();
+    }
+  }
+
+  function applyConnectionFollowState(targetId, isFollowing) {
+    const key = String(targetId);
+    if (isFollowing) connectionFollowIds.add(key);
+    else connectionFollowIds.delete(key);
+    if (currentUserId && currentUserId === String(profile.id)) {
+      const count = Number(profile.followingCount || 0);
+      profile.followingCount = Math.max(0, count + (isFollowing ? 1 : -1));
+      elements.followingCount.textContent = String(profile.followingCount);
+    } else if (key === String(profile.id)) {
+      currentProfileFollowing = isFollowing;
+      const count = Number(profile.followersCount || 0);
+      profile.followersCount = Math.max(0, count + (isFollowing ? 1 : -1));
+      elements.followerCount.textContent = String(profile.followersCount);
+      renderFollowButton();
+    }
+    renderConnectionsList();
+  }
+
+  async function toggleConnectionFollow(targetId) {
+    if (!viewerIsAuthenticated || !currentUserId) {
+      window.location.assign('login.html');
+      return;
+    }
+    const key = String(targetId);
+    if (!key || key === currentUserId || followActionPending) return;
+    const wasFollowing = connectionFollowIds.has(key);
+    const shouldFollow = !wasFollowing;
+    followActionPending = true;
+    applyConnectionFollowState(key, shouldFollow);
+    renderFollowButton();
+    try {
+      const query = supabaseClient.from('follows');
+      const result = shouldFollow
+        ? await query.insert({ follower_id: currentUserId, following_id: key })
+        : await query.delete().eq('follower_id', currentUserId).eq('following_id', key);
+      if (result.error) throw result.error;
+      showProfileToast(shouldFollow ? 'You are now following this profile.' : 'You unfollowed this profile.');
+    } catch (error) {
+      console.error('Could not update the follow relationship.', error);
+      applyConnectionFollowState(key, wasFollowing);
+      showProfileToast(`Could not update this follow: ${error.message || 'Please try again.'}`, 'error');
+    } finally {
+      followActionPending = false;
+      renderFollowButton();
+      renderConnectionsList();
+    }
+  }
+
+  async function refreshProfileConnections() {
+    if (!supabaseClient || !profile.id) return;
+    connectionDataLoaded = false;
+    connectionDataError = false;
+    elements.followingCount.textContent = '…';
+    elements.followerCount.textContent = '…';
+    renderFollowButton();
+    try {
+      const followerCountQuery = supabaseClient.from('follows')
+        .select('follower_id', { count: 'exact', head: true })
+        .eq('following_id', profile.id);
+      const followingCountQuery = supabaseClient.from('follows')
+        .select('following_id', { count: 'exact', head: true })
+        .eq('follower_id', profile.id);
+      const ownFollowsQuery = currentUserId
+        ? supabaseClient.from('follows').select('following_id').eq('follower_id', currentUserId)
+        : Promise.resolve({ data: [], error: null });
+      const [followersResult, followingResult, ownFollowsResult] = await Promise.all([
+        followerCountQuery,
+        followingCountQuery,
+        ownFollowsQuery
+      ]);
+      if (followersResult.error) throw followersResult.error;
+      if (followingResult.error) throw followingResult.error;
+      if (ownFollowsResult.error) throw ownFollowsResult.error;
+
+      profile.followersCount = Number(followersResult.count || 0);
+      profile.followingCount = Number(followingResult.count || 0);
+      elements.followerCount.textContent = String(profile.followersCount);
+      elements.followingCount.textContent = String(profile.followingCount);
+      connectionFollowIds = new Set((ownFollowsResult.data || []).map((row) => String(row.following_id)));
+      currentProfileFollowing = connectionFollowIds.has(String(profile.id));
+      connectionDataLoaded = true;
+      renderFollowButton();
+    } catch (error) {
+      console.error('Could not load live profile connection counts.', error);
+      connectionDataLoaded = true;
+      connectionDataError = true;
+      elements.followerCount.textContent = '—';
+      elements.followingCount.textContent = '—';
+      renderFollowButton();
+      showProfileToast(`Connection counts could not be loaded: ${error.message || 'Please try again.'}`, 'error');
+    }
   }
 
   function normalizeCommunityPost(post) {
     if (!post || typeof post !== 'object') {
       return null;
     }
-    const aliases = window.ATELIER_PUBLIC_PROFILE_ALIASES || {};
-    const postHandle = aliases[normalizeHandle(post.handle || post.author_handle)]
-      || normalizeHandle(post.handle || post.author_handle);
+    const postHandle = normalizeHandle(post.handle || post.author_handle);
     if (postHandle !== publicHandle) {
       return null;
     }
@@ -785,29 +1231,25 @@ document.addEventListener('DOMContentLoaded', () => {
     renderProfileLookbook(remoteEntries);
   }
 
-  elements.followButton.addEventListener('click', () => {
-    if (!viewerIsAuthenticated) {
-      window.location.assign('login.html');
-      return;
-    }
-    if (normalizeHandle(viewerProfile.username) === publicHandle) {
-      return;
-    }
-    try {
-      const follows = new Set(readStoredArray(getFollowingStorageKey()).map(normalizeHandle));
-      if (follows.has(publicHandle)) {
-        follows.delete(publicHandle);
-      } else {
-        follows.add(publicHandle);
-      }
-      window.localStorage.setItem(getFollowingStorageKey(), JSON.stringify([...follows]));
-      renderFollowButton();
-      showProfileToast(follows.has(publicHandle) ? 'You are now following this profile.' : 'You unfollowed this profile.');
-    } catch (error) {
-      console.error('Unable to update the followed profiles list.', error);
-      showProfileToast('Could not update your following list. Check browser storage and try again.', 'error');
-    }
+  elements.followButton.addEventListener('click', () => toggleConnectionFollow(profile.id));
+  elements.connectionButtons.forEach((button) => {
+    button.addEventListener('click', () => openConnections(button.dataset.openConnections, true));
   });
+  elements.connectionsTabs.forEach((tab) => {
+    tab.addEventListener('click', () => openConnections(tab.dataset.connectionsTab, true));
+  });
+  elements.connectionsList.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-person-follow]');
+    if (button) toggleConnectionFollow(button.dataset.personFollow);
+  });
+  document.querySelectorAll('[data-close-connections]').forEach((button) => {
+    button.addEventListener('click', () => elements.connectionsDialog.close());
+  });
+  elements.connectionsDialog.addEventListener('click', (event) => {
+    if (event.target === elements.connectionsDialog) elements.connectionsDialog.close();
+  });
+  elements.connectionsDialog.addEventListener('close', clearConnectionUrl);
+  window.addEventListener('popstate', syncConnectionsFromUrl);
 
   renderProfile();
   renderFollowButton();
@@ -825,8 +1267,12 @@ document.addEventListener('DOMContentLoaded', () => {
       ? 'tailor'
       : role.toLowerCase();
     const details = profile.roleDetails || {};
-    document.getElementById('edit-role-neighborhood').value = details.neighborhood || '';
-    document.getElementById('edit-role-specialty').value = details.specialty || '';
+    document.getElementById('edit-role-neighborhood').value = firstTailorValue(tailorRecord, ['neighborhood', 'area'])
+      || details.neighborhood
+      || '';
+    document.getElementById('edit-role-specialty').value = firstTailorValue(tailorRecord, ['specialty', 'specialties', 'specialization'])
+      || details.specialty
+      || '';
     document.getElementById('edit-role-upi').value = details.upi_id || '';
     document.getElementById('edit-role-whatsapp').value = details.whatsapp || '';
     pendingAvatarUrl = profile.avatarUrl || '';
@@ -840,6 +1286,132 @@ document.addEventListener('DOMContentLoaded', () => {
     elements.editDialog.showModal();
     if (focusInput) window.setTimeout(() => focusInput.focus(), 0);
   }
+
+  elements.tailorEditButton.addEventListener('click', () => {
+    const details = profile.roleDetails || {};
+    const specialty = firstTailorValue(tailorRecord, ['specialty', 'specialties', 'specialization', 'services'])
+      || String(details.specialty || '');
+    const specialtyOption = [...elements.tailorStudioSpecialtySelect.options]
+      .find((option) => option.value === specialty);
+    elements.tailorStudioNameInput.value = firstTailorValue(tailorRecord, ['name', 'studio_name', 'display_name'])
+      || profile.name;
+    elements.tailorStudioLocationInput.value = firstTailorValue(
+      tailorRecord,
+      ['neighborhood', 'area', 'address', 'street', 'location']
+    ) || String(details.neighborhood || '');
+    elements.tailorStudioSpecialtySelect.value = specialtyOption ? specialtyOption.value : (specialty ? 'custom' : '');
+    elements.tailorStudioCustomSpecialtyInput.value = specialtyOption ? '' : specialty;
+    elements.tailorStudioCustomSpecialtyInput.hidden = elements.tailorStudioSpecialtySelect.value !== 'custom';
+    elements.tailorStudioCustomSpecialtyInput.required = elements.tailorStudioSpecialtySelect.value === 'custom';
+    elements.tailorStudioPriceInput.value = firstTailorValue(tailorRecord, ['price_range', 'priceRange', 'pricing'])
+      || String(details.price_range || '');
+    elements.tailorStudioContactInput.value = firstTailorValue(
+      tailorRecord,
+      ['contact_info', 'contact', 'phone', 'contact_phone', 'whatsapp', 'email']
+    ) || String(details.contact || details.whatsapp || '');
+    elements.tailorStudioBioInput.value = firstTailorValue(tailorRecord, ['bio', 'services_note'])
+      || String(details.studio_bio || '');
+    elements.tailorStudioMessage.hidden = true;
+    elements.tailorStudioMessage.textContent = '';
+    elements.tailorStudioDialog.showModal();
+  });
+
+  elements.tailorStudioSpecialtySelect.addEventListener('change', () => {
+    const isCustom = elements.tailorStudioSpecialtySelect.value === 'custom';
+    elements.tailorStudioCustomSpecialtyInput.hidden = !isCustom;
+    elements.tailorStudioCustomSpecialtyInput.required = isCustom;
+    elements.tailorStudioCustomSpecialtyInput.setCustomValidity('');
+    if (isCustom) elements.tailorStudioCustomSpecialtyInput.focus();
+  });
+
+  elements.tailorStudioForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const formData = new FormData(elements.tailorStudioForm);
+    const studioName = String(formData.get('name') || '').trim();
+    const neighborhood = String(formData.get('neighborhood') || '').trim();
+    const specialtySelectValue = String(formData.get('specialty') || '');
+    const specialty = specialtySelectValue === 'custom'
+      ? String(formData.get('customSpecialty') || '').trim()
+      : specialtySelectValue.trim();
+    if (!studioName || !neighborhood || !specialty) {
+      if (specialtySelectValue === 'custom' && !specialty) {
+        elements.tailorStudioCustomSpecialtyInput.setCustomValidity('Enter your custom specialty.');
+        elements.tailorStudioCustomSpecialtyInput.reportValidity();
+      }
+      return;
+    }
+
+    const submitButton = elements.tailorStudioForm.querySelector('[type="submit"]');
+    submitButton.disabled = true;
+    elements.tailorStudioMessage.hidden = true;
+    let tailorSaved = false;
+    try {
+      const session = await window.atelierSupabase.getSession();
+      if (!session || !session.user || String(session.user.id) !== String(profile.id)) {
+        throw new Error('Log in to the tailor profile owner account to edit studio details.');
+      }
+
+      const client = window.atelierSupabase.getClient();
+      const tailorPayload = {
+        user_id: session.user.id,
+        name: studioName,
+        neighborhood,
+        specialty,
+        price_range: String(formData.get('priceRange') || '').trim(),
+        contact_info: String(formData.get('contactInfo') || '').trim(),
+        bio: String(formData.get('bio') || '').trim(),
+        avatar_url: profile.avatarUrl || ''
+      };
+      const { data: savedTailor, error: tailorError } = await client
+        .from('tailors')
+        .upsert(tailorPayload, { onConflict: 'user_id' })
+        .select('*')
+        .single();
+      if (tailorError) throw tailorError;
+      tailorRecord = savedTailor;
+      tailorSaved = true;
+
+      const roleDetails = {
+        ...(profile.roleDetails || {}),
+        neighborhood,
+        specialty
+      };
+      let profileResult = await client
+        .from('profiles')
+        .update({ location: neighborhood, specialty, role_details: roleDetails })
+        .eq('id', session.user.id)
+        .select('*')
+        .single();
+      if (isMissingProfileColumn(profileResult.error, ['location', 'specialty'])) {
+        profileResult = await client
+          .from('profiles')
+          .update({ role_details: roleDetails })
+          .eq('id', session.user.id)
+          .select('*')
+          .single();
+      }
+      if (profileResult.error) throw profileResult.error;
+
+      cacheProfileForLegacyPages(profileResult.data);
+      renderProfile();
+      elements.tailorStudioDialog.close();
+      showProfileToast('Studio details updated.');
+    } catch (error) {
+      console.error('Unable to save the tailor studio details.', error);
+      elements.tailorStudioMessage.textContent = tailorSaved
+        ? `Studio details were saved to the tailor directory, but the profile sync failed: ${error.message}`
+        : `Could not save studio details: ${error.message}`;
+      elements.tailorStudioMessage.dataset.kind = 'error';
+      elements.tailorStudioMessage.hidden = false;
+    } finally {
+      submitButton.disabled = false;
+    }
+  });
+  [
+    elements.tailorStudioNameInput,
+    elements.tailorStudioLocationInput,
+    elements.tailorStudioCustomSpecialtyInput
+  ].forEach((input) => input.addEventListener('input', () => input.setCustomValidity('')));
 
   async function prepareImage(input, preview, kind) {
     const file = input.files && input.files[0];
@@ -889,6 +1461,104 @@ document.addEventListener('DOMContentLoaded', () => {
   elements.editButton.addEventListener('click', () => openEditor());
   elements.avatarEditButton.addEventListener('click', () => openEditor(elements.avatarInput));
   elements.bannerEditButton.addEventListener('click', () => openEditor(elements.bannerInput));
+  elements.deleteAccountButton.addEventListener('click', () => {
+    if (
+      !viewerIsAuthenticated
+      || isPublicProfile
+      || !currentUserId
+      || String(profile.id) !== currentUserId
+    ) {
+      showProfileToast('Only the signed-in profile owner can delete this account.', 'error');
+      return;
+    }
+
+    if (!accountDeletionCompleted) {
+      elements.deleteForm.reset();
+      elements.deleteSubmitButton.textContent = 'Permanently Delete My Account';
+      elements.deleteSubmitButton.disabled = true;
+      elements.deleteConfirmationInput.disabled = false;
+      elements.deleteCancelButton.disabled = false;
+      elements.deleteMessage.hidden = true;
+      elements.deleteMessage.textContent = '';
+      elements.deleteMessage.removeAttribute('data-kind');
+    }
+    elements.deleteDialog.showModal();
+  });
+
+  elements.deleteConfirmationInput.addEventListener('input', () => {
+    elements.deleteSubmitButton.disabled = elements.deleteConfirmationInput.value !== 'DELETE';
+  });
+
+  elements.deleteCancelButton.addEventListener('click', () => {
+    if (!accountDeletionCompleted && !accountDeletionInProgress) {
+      elements.deleteDialog.close();
+    }
+  });
+
+  elements.deleteDialog.addEventListener('cancel', (event) => {
+    if (accountDeletionCompleted || accountDeletionInProgress) {
+      event.preventDefault();
+    }
+  });
+
+  elements.deleteForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    if (elements.deleteConfirmationInput.value !== 'DELETE' || accountDeletionInProgress) return;
+
+    accountDeletionInProgress = true;
+    elements.deleteSubmitButton.disabled = true;
+    elements.deleteCancelButton.disabled = true;
+    elements.deleteConfirmationInput.disabled = true;
+    elements.deleteMessage.hidden = true;
+    elements.deleteMessage.textContent = '';
+    let cleanupErrors = [];
+
+    try {
+      const client = window.atelierSupabase.getClient();
+      if (!accountDeletionCompleted) {
+        const session = await window.atelierSupabase.getSession();
+        if (
+          !session
+          || !session.user
+          || String(session.user.id) !== currentUserId
+          || String(session.user.id) !== String(profile.id)
+          || isPublicProfile
+        ) {
+          throw new Error('Your session no longer matches this profile. Please sign in again.');
+        }
+
+        const { error } = await client.rpc('delete_own_account');
+        if (error) throw error;
+        accountDeletionCompleted = true;
+        elements.deleteSubmitButton.textContent = 'Finish Sign Out';
+        cleanupErrors = window.atelierSupabase.clearAllAtelierStorage();
+      }
+
+      const { error: signOutError } = await client.auth.signOut();
+      if (signOutError) throw signOutError;
+
+      if (cleanupErrors.length) {
+        console.error('The account was deleted, but some local data could not be cleared.', cleanupErrors);
+        showProfileToast('Account deleted, but some local data could not be cleared. Please review this browser’s stored Atelier data.', 'error');
+        window.setTimeout(() => window.location.assign('index.html'), 2700);
+        return;
+      }
+
+      window.location.assign('index.html');
+    } catch (error) {
+      console.error('Unable to complete Atelier account deletion and sign-out.', error);
+      elements.deleteMessage.dataset.kind = 'error';
+      elements.deleteMessage.textContent = accountDeletionCompleted
+        ? `Your account was deleted, but sign-out failed: ${error.message || 'Please try again.'}`
+        : `Account deletion failed: ${error.message || 'Please try again.'}`;
+      elements.deleteMessage.hidden = false;
+    } finally {
+      accountDeletionInProgress = false;
+      elements.deleteCancelButton.disabled = accountDeletionCompleted;
+      elements.deleteConfirmationInput.disabled = accountDeletionCompleted;
+      elements.deleteSubmitButton.disabled = elements.deleteConfirmationInput.value !== 'DELETE';
+    }
+  });
 
   elements.editForm.addEventListener('submit', async (event) => {
     event.preventDefault();
@@ -912,23 +1582,33 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       const session = await window.atelierSupabase.getSession();
       if (!session || !session.user) throw new Error('Your session expired. Please log in again.');
-      const { data, error } = await window.atelierSupabase.getClient()
+      const client = window.atelierSupabase.getClient();
+      const profileChanges = {
+        display_name: displayName,
+        username,
+        bio,
+        role,
+        avatar_url: pendingAvatarUrl,
+        banner_url: pendingBannerUrl,
+        role_details: roleDetails
+      };
+      let profileResult = await client
         .from('profiles')
-        .update({
-          display_name: displayName,
-          username,
-          bio,
-          role,
-          avatar_url: pendingAvatarUrl,
-          banner_url: pendingBannerUrl,
-          role_details: roleDetails
-        })
+        .update({ ...profileChanges, profile_completed: true })
         .eq('id', session.user.id)
         .select('*')
         .single();
-      if (error) throw error;
+      if (isMissingProfileColumn(profileResult.error, ['profile_completed'])) {
+        profileResult = await client
+          .from('profiles')
+          .update(profileChanges)
+          .eq('id', session.user.id)
+          .select('*')
+          .single();
+      }
+      if (profileResult.error) throw profileResult.error;
 
-      cacheProfileForLegacyPages(data);
+      cacheProfileForLegacyPages({ ...profileResult.data, profile_completed: true });
       renderProfile();
       renderFollowButton();
       elements.editDialog.close();
@@ -946,9 +1626,13 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       const { error } = await window.atelierSupabase.getClient().auth.signOut();
       if (error) throw error;
-      window.localStorage.removeItem('atelier_current_user');
-      window.localStorage.removeItem('atelierUser');
-      window.localStorage.removeItem('atelierSessionInitialized');
+      const cleanupErrors = window.atelierSupabase.clearAllAtelierStorage();
+      if (cleanupErrors.length) {
+        console.error('Signed out, but some local Atelier data could not be cleared.', cleanupErrors);
+        showProfileToast('Signed out, but some local Atelier data could not be cleared.', 'error');
+        window.setTimeout(() => window.location.assign('index.html'), 2700);
+        return;
+      }
       window.location.assign('index.html');
     } catch (error) {
       console.error('Unable to sign out of Atelier.', error);
@@ -966,7 +1650,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.querySelectorAll('[data-close-dialog]').forEach((button) => {
     button.addEventListener('click', () => button.closest('dialog').close());
   });
-  [elements.editDialog, elements.threadDialog].forEach((dialog) => {
+  [elements.editDialog, elements.tailorStudioDialog, elements.threadDialog].forEach((dialog) => {
     dialog.addEventListener('click', (event) => {
       if (event.target === dialog) {
         dialog.close();
@@ -974,35 +1658,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  const posts = new Map([
-    ['post-1', {
-      id: 'post-1',
-      title: 'Fast Fashion brands are greedy',
-      date: 'Nov 14',
-      body: 'dont you guys think fast fashion brands these are doing too much? like the skims advent calender was just not it they give low quality products and price them really high! we gotta do sth abt this',
-      likes: 17,
-      commentCount: 4,
-      isLiked: false,
-      comments: [
-        { author: '@thriftthoughts', body: 'The overproduction is wild. I try to buy secondhand and keep things in rotation longer.' },
-        { author: '@mendingmaven', body: 'Agreed. Repairing what we already own is one small way to push back.' }
-      ]
-    }],
-    ['post-2', {
-      id: 'post-2',
-      title: 'i have a really bad stain on my white shirt!',
-      date: 'Nov 9',
-      body: 'i have an oil stain on my white shirt and i need it for a formal event tmrw, what do i do? please help!!!',
-      likes: 589,
-      commentCount: 15,
-      isLiked: false,
-      comments: [
-        { author: '@threadfix', body: 'Put a little dish soap directly on the oil stain, gently work it in, and rinse with warm water before washing.' },
-        { author: '@closetcare', body: 'Baking soda can help absorb the oil first. Let it sit, brush it off, then try dish soap.' },
-        { author: '@mendandwear', body: 'Air-dry it after washing so you can check the stain before using heat.' }
-      ]
-    }]
-  ]);
+  const posts = new Map();
   let activePost = null;
 
   function renderComments(post) {

@@ -71,11 +71,30 @@
 
           <section class="marketplace-filter-group">
             <h2>Categories</h2>
+            <label class="marketplace-filter-select">Category
+              <select id="market-category-filter">
+                <option value="">All categories</option>
+              </select>
+            </label>
             <label><input type="checkbox" value="small-business" data-filter="seller"> Small Business</label>
             <label><input type="checkbox" value="local-artisan" data-filter="seller"> Local Artisan</label>
             <label><input type="checkbox" value="crochet" data-filter="tag"> Handmade Crochet</label>
             <label><input type="checkbox" value="thrift" data-filter="tag"> Thrift Finds</label>
             <label><input type="checkbox" value="upcycled" data-filter="tag"> Upcycled</label>
+          </section>
+
+          <section class="marketplace-filter-group">
+            <h2>Condition</h2>
+            <label class="marketplace-filter-select">
+              <span class="sr-only">Filter by condition</span>
+              <select id="market-condition-filter">
+                <option value="">All conditions</option>
+                <option value="new">New</option>
+                <option value="like new">Like New</option>
+                <option value="good">Good</option>
+                <option value="fair">Fair</option>
+              </select>
+            </label>
           </section>
 
           <section class="marketplace-filter-group">
@@ -94,6 +113,7 @@
             <div><p class="marketplace-eyebrow">Good finds, better stories</p><h1>Made to be found</h1></div>
             <p id="marketplace-result-count" aria-live="polite"></p>
           </header>
+          <p class="marketplace-form-message" id="marketplace-data-status" role="status" aria-live="polite"></p>
           <div class="marketplace-grid" id="marketplace-grid" aria-live="polite"></div>
           <p class="marketplace-empty" id="marketplace-empty" hidden>No items match those filters yet. Try another search.</p>
         </section>
@@ -131,6 +151,14 @@
           </label>
         </div>
         <label>Price (₹)<input name="price" type="number" min="1" step="1" required></label>
+        <label>Condition
+          <select name="condition" required>
+            <option value="New">New</option>
+            <option value="Like New">Like New</option>
+            <option value="Good" selected>Good</option>
+            <option value="Fair">Fair</option>
+          </select>
+        </label>
         <label>Description<textarea name="description" rows="3" maxlength="400" required></textarea></label>
         <label>Seller UPI ID<input name="upiId" type="text" placeholder="e.g., name@okaxis" maxlength="100" required></label>
         <label>WhatsApp Number or Instagram Handle<input name="contact" type="text" placeholder="e.g., +91 98765 43210 or @handle" maxlength="100" required></label>

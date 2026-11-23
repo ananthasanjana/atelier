@@ -1,8 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
-  const CLOUDINARY_CLOUD_NAME = 'lify0b3k';
-  const CLOUDINARY_UPLOAD_PRESET = 'atelier_unsigned';
   const SEED_POSTS = window.ATELIER_COMMUNITY_POSTS || [];
   const SUGGESTIONS = window.ATELIER_COMMUNITY_MAKERS || [];
+  const FORUM_TOPICS = ['Mending Tips', 'Thrift Hauls', 'Upcycling', 'Fabric Care'];
   const FORUM_SEEDS = [
     {
       id: 'forum-lehenga',
@@ -38,6 +37,10 @@ document.addEventListener('DOMContentLoaded', () => {
     profileSummary: document.getElementById('community-profile-summary'),
     profileFollowingCount: document.getElementById('community-following-count'),
     profileFollowerCount: document.getElementById('community-follower-count'),
+    memberSearch: document.getElementById('community-member-search-input'),
+    memberSearchStatus: document.getElementById('community-member-search-status'),
+    memberSearchResults: document.getElementById('community-member-search-results'),
+    newPostButton: document.getElementById('community-new-post'),
     loginLink: document.getElementById('community-login-link'),
     loginPrompt: document.getElementById('community-login-prompt'),
     tabs: document.querySelectorAll('.community-tab'),
@@ -46,6 +49,7 @@ document.addEventListener('DOMContentLoaded', () => {
     feed: document.getElementById('community-feed'),
     suggestions: document.getElementById('community-suggestions'),
     composer: document.getElementById('community-composer'),
+    composerTopic: document.getElementById('community-post-topic'),
     composerText: document.getElementById('community-post-text'),
     imageInput: document.getElementById('community-image-input'),
     imageLabel: document.getElementById('community-image-label'),
@@ -59,11 +63,25 @@ document.addEventListener('DOMContentLoaded', () => {
   let profile = readProfile();
   let activeTab = 'home';
   let activeFilter = 'recent';
+  let composerOpen = false;
   let selectedFile = null;
   let previewUrl = '';
   let toastTimer = 0;
+  let memberSearchTimer = 0;
+  let memberSearchRequest = 0;
   let supabaseClient = null;
-  const isLoggedIn = Boolean(profile);
+  let currentUserId = '';
+  const profileIdsByHandle = new Map();
+  const authorProfilesById = new Map();
+  const authorProfilesByHandle = new Map();
+  const followingUserIds = new Set();
+  const pendingFollowHandles = new Set();
+  let suggestionProfilesLoaded = false;
+  let followDataPromise = Promise.resolve();
+  let commentsChannel = null;
+  const remoteCommentsByPostId = new Map();
+  const loadedCommentPostIds = new Set();
+  let isLoggedIn = Boolean(profile);
   const storedPosts = readJson(getKey('posts'), []);
   const storedLikes = readJson(getKey('likes'), []);
   const storedSaved = readJson(getKey('saved'), []);
@@ -79,36 +97,23 @@ document.addEventListener('DOMContentLoaded', () => {
   const forumReplies = readJson(getKey('forum-replies'), {});
   const storedForumThreads = readJson(getKey('forum-threads'), []);
   const localForumThreads = Array.isArray(storedForumThreads) ? storedForumThreads : [];
-  const ownHandle = profile ? profile.username : '';
+  let ownHandle = profile ? profile.username : '';
 
   window.atelierCommunityState = { activeTab, activeFilter };
 
   function readProfile() {
     try {
-      const saved = JSON.parse(
-        window.localStorage.getItem('atelier_current_user')
-        || window.localStorage.getItem('atelierUser')
-        || 'null'
-      );
-      if (
-        !saved
-        || typeof saved !== 'object'
-        || Array.isArray(saved)
-        || !['name', 'username', 'email'].some((field) => (
-          typeof saved[field] === 'string' && saved[field].trim()
-        ))
-      ) {
-        return null;
-      }
+      if (!window.atelierSupabase) return null;
+      const saved = window.atelierSupabase.readCachedProfile();
+      if (!saved || !saved.id) return null;
       return {
-        name: String(saved.display_name || saved.displayName || saved.name || saved.username || saved.email),
-        username: normalizeHandle(saved.username || saved.email),
+        id: String(saved.id),
+        name: String(saved.display_name || saved.username),
+        username: normalizeHandle(saved.username),
         role: /tailor/i.test(String(saved.role || '')) ? 'Tailor' : 'Member',
-        avatarUrl: typeof saved.avatar_url === 'string'
-          ? saved.avatar_url
-          : (typeof saved.avatarUrl === 'string' ? saved.avatarUrl : ''),
-        followingCount: readCount(saved.followingCount, saved.following, 125),
-        followersCount: readCount(saved.followersCount, saved.followerCount, 578)
+        avatarUrl: String(saved.avatar_url || ''),
+        followingCount: 0,
+        followersCount: 0
       };
     } catch (error) {
       console.error('Unable to read the saved community profile.', error);
@@ -116,15 +121,55 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  function readCount(primary, secondary, fallback) {
-    const value = Number(primary == null ? secondary : primary);
-    return Number.isFinite(value) && value >= 0 ? value : fallback;
+  function rememberAuthorProfile(row) {
+    if (!row || typeof row !== 'object') return;
+    const id = String(row.id || row.user_id || row.author_id || '');
+    const handleValue = row.username || row.author_username || row.author_handle || row.handle;
+    const existing = (id && authorProfilesById.get(id))
+      || (handleValue && authorProfilesByHandle.get(normalizeHandle(handleValue)));
+    const handle = handleValue ? normalizeHandle(handleValue) : (existing && existing.handle) || '';
+    const avatarValue = Object.prototype.hasOwnProperty.call(row, 'avatar_url')
+      ? row.avatar_url
+      : Object.prototype.hasOwnProperty.call(row, 'avatarUrl')
+        ? row.avatarUrl
+        : existing && existing.avatarUrl;
+    const authorProfile = {
+      id: id || (existing && existing.id) || '',
+      handle,
+      name: String(row.full_name || row.display_name || row.name || row.author_name || (existing && existing.name) || handle || 'Atelier member'),
+      avatarUrl: String(avatarValue || ''),
+      role: String(row.role || (existing && existing.role) || '')
+    };
+    if (authorProfile.id) authorProfilesById.set(authorProfile.id, authorProfile);
+    if (authorProfile.handle) authorProfilesByHandle.set(authorProfile.handle, authorProfile);
+  }
+
+  function findAuthorProfile(userId, handle) {
+    const id = String(userId || '');
+    if (id && authorProfilesById.has(id)) return authorProfilesById.get(id);
+    const normalizedHandle = handle ? normalizeHandle(handle) : '';
+    return normalizedHandle ? authorProfilesByHandle.get(normalizedHandle) || null : null;
+  }
+
+  function resolveAuthorAvatar(userId, handle) {
+    const authorProfile = findAuthorProfile(userId, handle);
+    return authorProfile ? authorProfile.avatarUrl : '';
   }
 
   function normalizeHandle(value) {
     const text = String(value || '').trim();
     const username = text.startsWith('@') ? text.slice(1) : (text.includes('@') ? text.split('@')[0] : text);
     return `@${username.toLowerCase().replace(/[^a-z0-9._-]+/g, '') || 'atelier-member'}`;
+  }
+
+  if (profile) {
+    rememberAuthorProfile({
+      id: profile.id,
+      username: profile.username,
+      name: profile.name,
+      avatar_url: profile.avatarUrl,
+      role: profile.role
+    });
   }
 
   function getKey(suffix) {
@@ -173,22 +218,78 @@ document.addEventListener('DOMContentLoaded', () => {
   function makeAvatar(name, image, extraClass) {
     const avatar = document.createElement('span');
     avatar.className = `community-avatar ${extraClass || ''}`.trim();
-    if (image) {
-      const img = document.createElement('img');
-      img.src = image;
-      img.alt = '';
-      img.loading = 'lazy';
-      avatar.append(img);
-    } else {
-      avatar.textContent = String(name || '?').trim().charAt(0).toUpperCase() || '?';
-    }
     avatar.setAttribute('aria-hidden', 'true');
+    renderAvatarContents(avatar, name, image);
     return avatar;
+  }
+
+  function renderAvatarContents(avatar, name, image) {
+    const authorName = String(name || '').trim() || 'Atelier member';
+    const initial = authorName.replace(/^@/, '').trim().charAt(0).toUpperCase() || '?';
+    const imageUrl = String(image || '');
+    const currentImage = avatar.querySelector('img');
+    avatar.dataset.authorName = authorName;
+
+    if (!imageUrl || avatar.dataset.failedAvatar === imageUrl) {
+      avatar.replaceChildren();
+      avatar.textContent = initial;
+      return;
+    }
+    if (currentImage && currentImage.getAttribute('src') === imageUrl) return;
+
+    avatar.dataset.failedAvatar = '';
+    const img = document.createElement('img');
+    img.src = imageUrl;
+    img.alt = authorName;
+    img.loading = 'lazy';
+    img.style.width = '100%';
+    img.style.height = '100%';
+    img.style.objectFit = 'cover';
+    img.style.borderRadius = '50%';
+    img.addEventListener('error', () => {
+      if (img.parentElement !== avatar) return;
+      avatar.dataset.failedAvatar = imageUrl;
+      img.remove();
+      avatar.textContent = initial;
+    }, { once: true });
+    avatar.replaceChildren(img);
+  }
+
+  function makeAuthorAvatar(name, userId, handle, extraClass) {
+    const avatar = makeAvatar(
+      name,
+      resolveAuthorAvatar(userId, handle),
+      extraClass
+    );
+    avatar.dataset.authorAvatar = '';
+    if (userId) avatar.dataset.authorId = String(userId);
+    if (handle) avatar.dataset.authorHandle = normalizeHandle(handle);
+    return avatar;
+  }
+
+  function refreshRenderedAuthorAvatars() {
+    document.querySelectorAll('.community-avatar[data-author-avatar]').forEach((avatar) => {
+      renderAvatarContents(
+        avatar,
+        avatar.dataset.authorName,
+        resolveAuthorAvatar(
+          avatar.dataset.authorId,
+          avatar.dataset.authorHandle
+        )
+      );
+    });
   }
 
   function profileHref(handle) {
     const username = String(handle || '').trim().replace(/^@/, '');
     return `profile.html?user=${encodeURIComponent(username)}`;
+  }
+
+  function memberProfileHref(member) {
+    const username = String(member.username || '').trim().replace(/^@/, '');
+    return username
+      ? profileHref(username)
+      : `profile.html?id=${encodeURIComponent(String(member.id || ''))}`;
   }
 
   function makeProfileLink(label, handle, className) {
@@ -203,7 +304,8 @@ document.addEventListener('DOMContentLoaded', () => {
     elements.profileSummary.hidden = !isLoggedIn;
     elements.loginLink.hidden = isLoggedIn;
     elements.loginPrompt.hidden = isLoggedIn;
-    elements.composer.hidden = !isLoggedIn;
+    elements.newPostButton.hidden = !isLoggedIn;
+    elements.composer.hidden = !isLoggedIn || !composerOpen;
     document.querySelectorAll('[data-auth-only]').forEach((tab) => {
       tab.hidden = !isLoggedIn;
     });
@@ -224,17 +326,24 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function refreshProfileAvatar() {
-    if (!isLoggedIn) return;
     const savedProfile = readProfile();
-    if (!savedProfile) return;
-
-    profile.avatarUrl = savedProfile.avatarUrl;
-    elements.profileAvatar.replaceWith(makeAvatar(
-      profile.name,
-      profile.avatarUrl || 'assets/profile-avatar-fallback.svg',
-      'community-avatar--profile'
-    ));
-    elements.profileAvatar = document.querySelector('.community-avatar--profile');
+    profile = savedProfile;
+    isLoggedIn = Boolean(savedProfile);
+    ownHandle = profile ? profile.username : '';
+    if (profile) {
+      rememberAuthorProfile({
+        id: profile.id,
+        username: profile.username,
+        name: profile.name,
+        avatar_url: profile.avatarUrl,
+        role: profile.role
+      });
+    }
+    initializeProfile();
+    refreshRenderedAuthorAvatars();
+    if (profile && supabaseClient) {
+      refreshCurrentUserProfileAvatar();
+    }
   }
 
   function initializeSupabase() {
@@ -246,6 +355,94 @@ document.addEventListener('DOMContentLoaded', () => {
       supabaseClient = window.atelierSupabase.getClient();
     } catch (error) {
       console.error('Unable to initialize the community Supabase client.', error);
+    }
+  }
+
+  async function fetchAuthorProfiles(column, values) {
+    const selections = [
+      'id, username, display_name, avatar_url, role',
+      'id, username, full_name, avatar_url, role',
+      'id, username, avatar_url, role'
+    ];
+    let lastError = null;
+    for (const fields of selections) {
+      const { data, error } = await supabaseClient
+        .from('profiles')
+        .select(fields)
+        .in(column, values);
+      if (!error) return data || [];
+      lastError = error;
+      const message = `${error.message || ''} ${error.details || ''}`.toLowerCase();
+      const missingNameColumn = ['42703', 'PGRST204'].includes(error.code)
+        && (message.includes('full_name') || message.includes('display_name'));
+      if (!missingNameColumn) throw error;
+    }
+    throw lastError || new Error('Could not load Community author profiles.');
+  }
+
+  async function loadAuthorProfiles(rows) {
+    if (!supabaseClient || !Array.isArray(rows) || !rows.length) return;
+    const authorIds = new Set();
+    rows.forEach((row) => {
+      if (!row || typeof row !== 'object') return;
+      const id = row.user_id || row.author_id;
+      if (id) authorIds.add(String(id));
+    });
+
+    const errors = [];
+    const loadedIds = new Set();
+    if (authorIds.size) {
+      try {
+        (await fetchAuthorProfiles('id', [...authorIds])).forEach((row) => {
+          rememberAuthorProfile(row);
+          if (row.id) loadedIds.add(String(row.id));
+        });
+      } catch (error) {
+        errors.push(error);
+      }
+    }
+
+    const authorHandles = new Set();
+    rows.forEach((row) => {
+      if (!row || typeof row !== 'object') return;
+      const id = String(row.user_id || row.author_id || '');
+      const handle = row.author_username
+        || row.author_handle
+        || row.username
+        || row.handle
+        || (String(row.author || '').trim().startsWith('@') ? row.author : '');
+      if (
+        handle
+        && !String(handle).startsWith('@atelier-member')
+        && (!id || !loadedIds.has(id))
+      ) {
+        authorHandles.add(normalizeHandle(handle).slice(1));
+      }
+    });
+    if (authorHandles.size) {
+      try {
+        (await fetchAuthorProfiles('username', [...authorHandles])).forEach(rememberAuthorProfile);
+      } catch (error) {
+        errors.push(error);
+      }
+    }
+
+    if (errors.length) {
+      console.error('Community author profiles could not be fully loaded.', errors);
+    }
+    refreshRenderedAuthorAvatars();
+  }
+
+  async function refreshCurrentUserProfileAvatar() {
+    if (!supabaseClient) return;
+    try {
+      const { data, error } = await supabaseClient.auth.getSession();
+      if (error) throw error;
+      const user = data.session && data.session.user;
+      if (!user || !user.id) return;
+      await loadAuthorProfiles([{ user_id: user.id }]);
+    } catch (error) {
+      console.error('The current Community user profile picture could not be refreshed.', error);
     }
   }
 
@@ -299,7 +496,13 @@ document.addEventListener('DOMContentLoaded', () => {
     avatarLink.className = 'community-post__avatar-link';
     avatarLink.href = profileHref(post.handle);
     avatarLink.setAttribute('aria-label', `View ${post.author}'s profile`);
-    avatarLink.append(makeAvatar(post.author, post.avatar, 'community-avatar--small'));
+    const authorProfile = findAuthorProfile(post.userId, post.handle);
+    avatarLink.append(makeAuthorAvatar(
+      authorProfile ? authorProfile.name : post.author,
+      post.userId,
+      post.handle,
+      'community-avatar--small'
+    ));
     head.append(avatarLink);
     const authorBlock = document.createElement('div');
     authorBlock.className = 'community-post__author';
@@ -388,7 +591,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function getComments(post) {
     const extra = Array.isArray(localComments[post.id]) ? localComments[post.id] : [];
-    return [...(Array.isArray(post.comments) ? post.comments : []), ...extra];
+    const remote = remoteCommentsByPostId.get(String(post.id)) || [];
+    return [...(Array.isArray(post.comments) ? post.comments : []), ...remote, ...extra];
   }
 
   function renderComments(post, panel) {
@@ -397,16 +601,43 @@ document.addEventListener('DOMContentLoaded', () => {
     list.className = 'community-comments__list';
     getComments(post).forEach((comment) => {
       const item = document.createElement('li');
-      const author = document.createElement('strong');
-      const authorHandle = String(comment.author || '').startsWith('@') ? comment.author : '';
-      if (authorHandle) {
-        author.append(makeProfileLink(comment.author, authorHandle, 'community-profile-link'));
+      const handleValue = comment.handle
+        || (String(comment.author || '').startsWith('@') ? comment.author : '');
+      const handle = handleValue ? normalizeHandle(handleValue) : '';
+      const userId = String(comment.userId || comment.user_id || '');
+      const authorProfile = findAuthorProfile(userId, handle);
+      const avatarName = authorProfile
+        ? authorProfile.name
+        : String(comment.authorName || comment.author || 'Atelier member');
+      const avatar = makeAuthorAvatar(
+        avatarName,
+        userId,
+        handle,
+        'community-avatar--comment'
+      );
+      if (handle) {
+        const avatarLink = document.createElement('a');
+        avatarLink.className = 'community-comments__avatar-link';
+        avatarLink.href = profileHref(handle);
+        avatarLink.setAttribute('aria-label', `View ${avatarName}'s profile`);
+        avatarLink.append(avatar);
+        item.append(avatarLink);
       } else {
-        author.textContent = comment.author;
+        item.append(avatar);
+      }
+
+      const content = document.createElement('div');
+      content.className = 'community-comments__content';
+      const author = document.createElement('strong');
+      if (handle) {
+        author.append(makeProfileLink(comment.author || handle, handle, 'community-profile-link'));
+      } else {
+        author.textContent = comment.authorName || comment.author || 'Atelier member';
       }
       const body = document.createElement('span');
       body.textContent = comment.body;
-      item.append(author, body);
+      content.append(author, body);
+      item.append(content);
       list.append(item);
     });
     const form = document.createElement('form');
@@ -521,21 +752,176 @@ document.addEventListener('DOMContentLoaded', () => {
         details.append(badge);
       }
       profileLink.append(details);
-      const followed = following.has(suggestion.handle);
+      const handle = normalizeHandle(suggestion.handle);
+      const profileId = profileIdsByHandle.get(handle) || '';
+      const followed = supabaseClient
+        ? Boolean(profileId && followingUserIds.has(profileId))
+        : following.has(handle);
       const button = document.createElement('button');
       button.type = 'button';
       button.className = `community-follow${followed ? ' is-following' : ''}`;
-      button.dataset.follow = suggestion.handle;
+      button.dataset.follow = handle;
       button.setAttribute('aria-pressed', String(followed));
-      button.textContent = followed ? 'Following' : 'Follow';
+      const isSelf = Boolean(currentUserId && profileId === currentUserId);
+      const profileUnavailable = Boolean(supabaseClient && suggestionProfilesLoaded && !profileId);
+      button.disabled = pendingFollowHandles.has(handle) || isSelf || profileUnavailable;
+      button.textContent = isSelf
+        ? 'You'
+        : profileUnavailable
+          ? 'Not on Atelier'
+          : followed ? 'Following ✓' : 'Follow';
       card.append(profileLink, button);
       elements.suggestions.append(card);
     });
   }
 
+  function setMemberSearchStatus(message) {
+    elements.memberSearchStatus.textContent = message;
+    elements.memberSearchStatus.hidden = !message;
+  }
+
+  function renderMemberSearchResults(members, statusMessage) {
+    elements.memberSearchResults.replaceChildren();
+    elements.memberSearchResults.hidden = !members.length;
+    setMemberSearchStatus(statusMessage);
+
+    members.forEach((member) => {
+      const card = document.createElement('article');
+      card.className = 'community-member-result';
+      card.setAttribute('role', 'listitem');
+      const avatar = makeAvatar(member.name, member.avatar, 'community-avatar--member-search');
+      const details = document.createElement('div');
+      details.className = 'community-member-result__details';
+      const name = document.createElement('strong');
+      name.textContent = member.name;
+      const handle = document.createElement('span');
+      handle.className = 'community-member-result__handle';
+      handle.textContent = member.handle;
+      const badge = document.createElement('span');
+      badge.className = `community-member-role${member.role === 'Tailor' ? ' community-member-role--tailor' : ''}`;
+      badge.textContent = member.role;
+      details.append(name, handle, badge);
+      const link = document.createElement('a');
+      link.className = 'community-member-result__link';
+      link.href = memberProfileHref(member);
+      link.textContent = 'View Profile';
+      card.append(avatar, details, link);
+      elements.memberSearchResults.append(card);
+    });
+  }
+
+  function mapSearchProfile(row) {
+    const username = String(row.username || '').trim().replace(/^@/, '');
+    return {
+      id: row.id || '',
+      username,
+      handle: username ? normalizeHandle(username) : '@atelier-member',
+      name: String(row.full_name || row.display_name || row.name || username || 'Atelier member'),
+      avatar: String(row.avatar_url || row.avatarUrl || ''),
+      role: /tailor/i.test(String(row.role || '')) ? 'Tailor' : 'Member'
+    };
+  }
+
+  function searchPostAuthors(query) {
+    const term = query.toLowerCase();
+    const suggestionsByHandle = new Map(
+      SUGGESTIONS.map((suggestion) => [normalizeHandle(suggestion.handle), suggestion])
+    );
+    const membersByHandle = new Map();
+    mergePosts(window.atelierCommunityRemotePosts || []).forEach((post) => {
+      const handle = normalizeHandle(post.handle || post.author);
+      const suggestion = suggestionsByHandle.get(handle);
+      const name = String(post.author || handle);
+      if (!`${name} ${handle}`.toLowerCase().includes(term) || membersByHandle.has(handle)) return;
+      const isTailor = Boolean(
+        (suggestion && suggestion.verified)
+        || (profile && profile.username === handle && profile.role === 'Tailor')
+      );
+      membersByHandle.set(handle, {
+        id: post.userId || '',
+        username: handle.replace(/^@/, ''),
+        handle,
+        name,
+        avatar: post.avatar || (suggestion && suggestion.avatar) || '',
+        role: isTailor ? 'Tailor' : 'Member'
+      });
+    });
+    return [...membersByHandle.values()];
+  }
+
+  async function searchMembers(query, requestId) {
+    if (!supabaseClient) {
+      renderMemberSearchResults(
+        searchPostAuthors(query),
+        'Search is offline; showing matching post authors.'
+      );
+      return;
+    }
+
+    try {
+      const pattern = `%${query.replace(/[%_]/g, '\\$&')}%`;
+      const [usernameResult, displayNameResult] = await Promise.all([
+        supabaseClient.from('profiles').select('*').ilike('username', pattern).limit(20),
+        supabaseClient.from('profiles').select('*').ilike('display_name', pattern).limit(20)
+      ]);
+      if (requestId !== memberSearchRequest) return;
+      if (usernameResult.error) throw usernameResult.error;
+
+      let rows = [...(usernameResult.data || [])];
+      if (displayNameResult.error) {
+        console.info('The profiles table has no searchable display_name field; trying full_name.');
+        const fullNameResult = await supabaseClient
+          .from('profiles')
+          .select('*')
+          .ilike('full_name', pattern)
+          .limit(20);
+        if (requestId !== memberSearchRequest) return;
+        if (fullNameResult.error) throw fullNameResult.error;
+        rows = rows.concat(fullNameResult.data || []);
+      } else {
+        rows = rows.concat(displayNameResult.data || []);
+      }
+
+      const uniqueMembers = new Map();
+      rows.map(mapSearchProfile).forEach((member) => {
+        const key = member.id || member.handle;
+        if (!uniqueMembers.has(key)) uniqueMembers.set(key, member);
+      });
+      const members = [...uniqueMembers.values()];
+      renderMemberSearchResults(
+        members,
+        members.length ? '' : 'No members or tailors found. Try another name or handle.'
+      );
+    } catch (error) {
+      if (requestId !== memberSearchRequest) return;
+      console.error('Community member search failed; showing matching post authors.', error);
+      renderMemberSearchResults(
+        searchPostAuthors(query),
+        'Member search is unavailable; showing matching post authors instead.'
+      );
+    }
+  }
+
+  function onMemberSearchInput() {
+    window.clearTimeout(memberSearchTimer);
+    const query = elements.memberSearch.value.trim();
+    const requestId = ++memberSearchRequest;
+    if (!query) {
+      elements.memberSearchResults.replaceChildren();
+      elements.memberSearchResults.hidden = true;
+      setMemberSearchStatus('');
+      return;
+    }
+    setMemberSearchStatus('Searching members and tailors…');
+    elements.memberSearchResults.replaceChildren();
+    elements.memberSearchResults.hidden = true;
+    memberSearchTimer = window.setTimeout(() => searchMembers(query, requestId), 250);
+  }
+
   function mergePosts(remotePosts) {
-    const byId = new Map(SEED_POSTS.map((post) => [post.id, post]));
-    localPosts.forEach((post) => byId.set(post.id, post));
+    const byId = new Map();
+    const fallbackPosts = remotePosts.length ? [] : (localPosts.length ? localPosts : SEED_POSTS);
+    fallbackPosts.forEach((post) => byId.set(String(post.id), post));
     remotePosts.forEach((post) => byId.set(post.id, post));
     return [...byId.values()].filter((post) => !deletedIds.has(String(post.id))).sort((first, second) => {
       return new Date(second.createdAt || 0).getTime() - new Date(first.createdAt || 0).getTime();
@@ -544,13 +930,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function matchesTab(post) {
     if (activeTab === 'friends') {
-      return following.has(normalizeHandle(post.handle));
+      return !post.forumTopic && following.has(normalizeHandle(post.handle));
     }
     if (activeTab === 'saved') {
       return savedIds.has(post.id);
     }
     if (activeTab === 'my-posts') {
       return normalizeHandle(post.handle) === ownHandle;
+    }
+    if (activeTab === 'home') {
+      return !post.forumTopic;
     }
     return true;
   }
@@ -566,7 +955,7 @@ document.addEventListener('DOMContentLoaded', () => {
             ? 'My Posts'
           : 'Community feed';
     document.querySelector('.community-filters').hidden = activeTab === 'forums';
-    elements.composer.hidden = !isLoggedIn || activeTab === 'forums';
+    elements.composer.hidden = !isLoggedIn || !composerOpen;
     elements.loginPrompt.hidden = isLoggedIn;
     elements.feed.replaceChildren();
 
@@ -590,6 +979,9 @@ document.addEventListener('DOMContentLoaded', () => {
         askButton,
         ...[...localForumThreads, ...FORUM_SEEDS].map(createForumCard)
       );
+      mergePosts(window.atelierCommunityRemotePosts || [])
+        .filter((post) => post.forumTopic)
+        .forEach((post) => elements.feed.append(createPostCard(post)));
       return;
     }
 
@@ -616,6 +1008,20 @@ document.addEventListener('DOMContentLoaded', () => {
     visible.forEach((post) => elements.feed.append(createPostCard(post)));
   }
 
+  function getFallbackAuthorRows() {
+    const posts = localPosts.length ? localPosts : SEED_POSTS;
+    return posts.flatMap((post) => [
+      {
+        user_id: post.userId || post.user_id || '',
+        author_handle: post.handle || post.author_handle || ''
+      },
+      ...(Array.isArray(post.comments) ? post.comments.map((comment) => ({
+        user_id: comment.userId || comment.user_id || '',
+        author_handle: comment.handle || comment.author_handle || comment.author || ''
+      })) : [])
+    ]);
+  }
+
   async function loadRemotePosts() {
     if (!supabaseClient) {
       return;
@@ -623,30 +1029,229 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       const { data, error } = await supabaseClient
         .from('community_posts')
-        .select('id, author_name, author_handle, avatar_url, content, tags, image_url, upcycled, likes, created_at')
+        .select('*')
         .order('created_at', { ascending: false })
         .limit(40);
       if (error) {
         throw error;
       }
-      window.atelierCommunityRemotePosts = (data || []).map((row) => ({
-        id: String(row.id),
-        author: row.author_name || 'Atelier member',
-        handle: normalizeHandle(row.author_handle),
-        avatar: row.avatar_url || '',
-        content: row.content || '',
-        tags: Array.isArray(row.tags) ? row.tags : [],
-        likes: Number(row.likes || 0),
-        comments: [],
-        upcycled: Boolean(row.upcycled),
-        createdAt: row.created_at,
-        timestamp: formatTimestamp(row.created_at),
-        images: row.image_url ? [{ src: row.image_url, alt: 'Image shared by the community' }] : []
-      }));
+      const rows = data || [];
+      await loadAuthorProfiles([...rows, ...getFallbackAuthorRows()]);
+      window.atelierCommunityRemotePosts = rows.map((row) => {
+        const userId = String(row.user_id || row.author_id || '');
+        const handle = normalizeHandle(row.author_username || row.author_handle || row.username);
+        const authorProfile = findAuthorProfile(userId, handle);
+        return {
+          id: String(row.id),
+          userId,
+          author: row.author_name || (authorProfile && authorProfile.name) || 'Atelier member',
+          handle,
+          avatar: resolveAuthorAvatar(userId, handle),
+          content: row.content || '',
+          tags: Array.isArray(row.tags) ? row.tags : [],
+          forumTopic: forumTopicFromRow(row),
+          likes: Number(row.likes || 0),
+          comments: [],
+          upcycled: Boolean(row.upcycled),
+          createdAt: row.created_at,
+          timestamp: formatTimestamp(row.created_at),
+          images: row.image_url ? [{ src: row.image_url, alt: 'Image shared by the community' }] : []
+        };
+      });
+      await loadRemoteComments();
+      subscribeToComments();
       renderFeed();
     } catch (error) {
-      console.warn('Community posts could not be loaded from Supabase; showing the local feed.', error.message);
+      console.error('Community posts could not be loaded from Supabase; showing seeded posts.', error);
+      window.atelierCommunityRemotePosts = [];
+      await loadAuthorProfiles(getFallbackAuthorRows());
+      renderFeed();
     }
+  }
+
+  function forumTopicFromRow(row) {
+    const explicitTopic = String(row.forum_topic || row.topic || '').trim();
+    const tags = Array.isArray(row.tags) ? row.tags.map((tag) => String(tag).trim()) : [];
+    return FORUM_TOPICS.find((topic) => (
+      topic.toLowerCase() === explicitTopic.toLowerCase()
+      || tags.some((tag) => tag.toLowerCase() === topic.toLowerCase())
+    )) || '';
+  }
+
+  function mapRemoteComment(row) {
+    const userId = String(row.user_id || row.author_id || '');
+    const handleValue = String(row.author_username || row.author_handle || row.username || '').trim();
+    const handle = handleValue ? normalizeHandle(handleValue) : '';
+    const authorName = String(row.author_name || row.display_name || '').trim();
+    const authorProfile = findAuthorProfile(userId, handle);
+    return {
+      id: String(row.id || `${row.post_id}-${row.created_at}-${handle || authorName}`),
+      postId: String(row.post_id),
+      userId,
+      handle,
+      author: handle || (authorName || '@atelier-member'),
+      authorName: (authorProfile && authorProfile.name) || authorName || handle || 'Atelier member',
+      avatar: resolveAuthorAvatar(userId, handle),
+      body: String(row.content || row.body || row.comment_text || ''),
+      createdAt: row.created_at || ''
+    };
+  }
+
+  async function loadRemoteComments() {
+    const posts = window.atelierCommunityRemotePosts || [];
+    if (!supabaseClient || !posts.length) {
+      return;
+    }
+    const postIds = posts.map((post) => String(post.id));
+    try {
+      const { data, error } = await supabaseClient
+        .from('post_comments')
+        .select('*')
+        .in('post_id', postIds)
+        .order('created_at', { ascending: true });
+      if (error) throw error;
+      await loadAuthorProfiles(data || []);
+      remoteCommentsByPostId.clear();
+      loadedCommentPostIds.clear();
+      postIds.forEach((postId) => {
+        remoteCommentsByPostId.set(postId, []);
+        loadedCommentPostIds.add(postId);
+      });
+      (data || []).map(mapRemoteComment).forEach((comment) => {
+        const comments = remoteCommentsByPostId.get(comment.postId) || [];
+        comments.push(comment);
+        remoteCommentsByPostId.set(comment.postId, comments);
+      });
+    } catch (error) {
+      console.error('Community comments could not be loaded from Supabase.', error);
+    }
+  }
+
+  async function loadPostComments(postId) {
+    const key = String(postId);
+    if (!supabaseClient || loadedCommentPostIds.has(key)) return;
+    try {
+      const { data, error } = await supabaseClient
+        .from('post_comments')
+        .select('*')
+        .eq('post_id', key)
+        .order('created_at', { ascending: true });
+      if (error) throw error;
+      await loadAuthorProfiles(data || []);
+      remoteCommentsByPostId.set(key, (data || []).map(mapRemoteComment));
+      loadedCommentPostIds.add(key);
+      refreshPostComments(key);
+    } catch (error) {
+      console.error(`Comments for post ${key} could not be loaded.`, error);
+      showToast(`Comments could not be loaded: ${error.message || 'Please try again.'}`, 'error');
+    }
+  }
+
+  function refreshPostComments(postId) {
+    const post = mergePosts(window.atelierCommunityRemotePosts || [])
+      .find((item) => String(item.id) === String(postId));
+    if (!post) return;
+    const card = [...elements.feed.querySelectorAll('[data-post-id]')]
+      .find((item) => item.dataset.postId === String(postId));
+    if (!card) return;
+    const count = card.querySelector('[data-comment-count]');
+    if (count && count.lastChild) count.lastChild.textContent = String(getComments(post).length);
+    const panel = card.querySelector('[data-comments]');
+    if (panel && !panel.hidden) renderComments(post, panel);
+  }
+
+  async function receiveRealtimeComment(payload) {
+    const eventType = String(payload.eventType || '').toUpperCase();
+    const row = eventType === 'DELETE' ? payload.old : payload.new;
+    if (!row || row.post_id == null) return;
+    const postId = String(row.post_id);
+    if (eventType !== 'DELETE') await loadAuthorProfiles([row]);
+    const comment = mapRemoteComment(row);
+    const comments = remoteCommentsByPostId.get(postId) || [];
+    const index = comments.findIndex((entry) => entry.id === comment.id);
+    if (eventType === 'DELETE') {
+      if (index >= 0) comments.splice(index, 1);
+    } else if (index >= 0) {
+      comments[index] = comment;
+    } else {
+      comments.push(comment);
+    }
+    remoteCommentsByPostId.set(postId, comments);
+    refreshPostComments(postId);
+  }
+
+  async function submitCommentForm(form) {
+    const card = form.closest('[data-post-id]');
+    const postId = card.dataset.postId;
+    const input = form.elements.comment;
+    const text = input.value.trim();
+    if (!text || !requireLogin()) return;
+
+    const button = form.querySelector('[type="submit"]');
+    button.disabled = true;
+    const isRemotePost = (window.atelierCommunityRemotePosts || [])
+      .some((post) => String(post.id) === String(postId));
+    try {
+      if (!isRemotePost) {
+        localComments[postId] = [...(localComments[postId] || []), { author: ownHandle, body: text }];
+        if (!persist('comments', localComments)) return;
+      } else {
+        if (!supabaseClient) throw new Error('Supabase is unavailable. Please try again later.');
+        const { data: sessionData, error: sessionError } = await supabaseClient.auth.getSession();
+        if (sessionError) throw sessionError;
+        const user = sessionData.session && sessionData.session.user;
+        if (!user) throw new Error('Your sign-in has expired. Log in again before commenting.');
+        const { data, error } = await supabaseClient
+          .from('post_comments')
+          .insert({
+            post_id: postId,
+            user_id: user.id,
+            author_name: profile.name,
+            author_handle: ownHandle,
+            content: text
+          })
+          .select('*')
+          .single();
+        if (error) throw error;
+        if (!data) throw new Error('Supabase did not return the saved comment.');
+        await loadAuthorProfiles([data]);
+        const comment = mapRemoteComment(data);
+        const comments = remoteCommentsByPostId.get(String(postId)) || [];
+        if (!comments.some((entry) => entry.id === comment.id)) comments.push(comment);
+        remoteCommentsByPostId.set(String(postId), comments);
+        loadedCommentPostIds.add(String(postId));
+      }
+
+      input.value = '';
+      const post = mergePosts(window.atelierCommunityRemotePosts || [])
+        .find((item) => String(item.id) === String(postId));
+      const panel = card.querySelector('[data-comments]');
+      renderComments(post || { id: postId, comments: [] }, panel);
+      const count = card.querySelector('[data-comment-count]');
+      if (count && count.lastChild) count.lastChild.textContent = String(getComments(post || { id: postId, comments: [] }).length);
+      showToast(isRemotePost ? 'Comment added.' : 'Comment saved on this device for the sample post.');
+    } catch (error) {
+      console.error('Unable to add the community comment.', error);
+      showToast(`Your comment could not be saved: ${error.message || 'Please try again.'}`, 'error');
+    } finally {
+      button.disabled = false;
+    }
+  }
+
+  function subscribeToComments() {
+    if (!supabaseClient || commentsChannel || typeof supabaseClient.channel !== 'function') return;
+    commentsChannel = supabaseClient
+      .channel(`community-post-comments-${Date.now()}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'post_comments'
+      }, receiveRealtimeComment)
+      .subscribe((status) => {
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          console.error(`Realtime comment updates are unavailable (${status}).`);
+        }
+      });
   }
 
   function formatTimestamp(value) {
@@ -661,36 +1266,9 @@ document.addEventListener('DOMContentLoaded', () => {
     return `${hours} hour${hours === 1 ? '' : 's'} ago`;
   }
 
-  function readFileAsDataUrl(file) {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.addEventListener('load', () => {
-        if (typeof reader.result === 'string') {
-          resolve(reader.result);
-        } else {
-          reject(new Error('The image could not be read.'));
-        }
-      }, { once: true });
-      reader.addEventListener('error', () => reject(reader.error || new Error('The image could not be read.')), { once: true });
-      reader.addEventListener('abort', () => reject(new Error('Reading the image was canceled.')), { once: true });
-      reader.readAsDataURL(file);
-    });
-  }
-
   async function uploadImage(file) {
-    const body = new FormData();
-    body.append('file', file);
-    body.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
-    const response = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, {
-      method: 'POST',
-      body
-    });
-    const result = await response.json();
-    if (!response.ok || !result || typeof result.secure_url !== 'string') {
-      const message = result && result.error && result.error.message;
-      throw new Error(message || 'Cloudinary did not accept the image.');
-    }
-    return result.secure_url;
+    if (!window.atelierSupabase) throw new Error('Cloudinary upload is unavailable. Refresh and try again.');
+    return window.atelierSupabase.uploadImage(file);
   }
 
   function resetAttachment() {
@@ -716,100 +1294,88 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    const submitButton = elements.composer.querySelector('[type="submit"]');
-    submitButton.disabled = true;
-    let imageUrl = '';
-    let imageUploadFailed = false;
-    let remoteSyncError = '';
-    if (selectedFile) {
-      try {
-        imageUrl = await uploadImage(selectedFile);
-      } catch (error) {
-        imageUploadFailed = true;
-        console.warn('Community image upload failed; trying a local image fallback.', error.message);
-        try {
-          imageUrl = await readFileAsDataUrl(selectedFile);
-        } catch (fallbackError) {
-          console.error('Unable to read a local community image fallback.', fallbackError);
-          submitButton.disabled = false;
-          showToast(`Could not upload or read this image: ${fallbackError.message}`, 'error');
-          return;
-        }
-      }
-    }
-
-    const post = {
-      id: `local-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      author: profile.name,
-      handle: ownHandle,
-      avatar: profile.avatarUrl,
-      content,
-      tags: ['COMMUNITY'],
-      likes: 0,
-      comments: [],
-      upcycled: /mend|repair|upcycl|thrift|patch/i.test(content),
-      createdAt: new Date().toISOString(),
-      timestamp: 'Just now',
-      images: imageUrl ? [{ src: imageUrl, alt: 'Photo shared by the community' }] : []
-    };
-
-    if (supabaseClient && !imageUploadFailed) {
-      try {
-        const row = {
-          author_name: profile.name,
-          author_handle: ownHandle,
-          avatar_url: profile.avatarUrl || null,
-          content,
-          tags: post.tags,
-          image_url: imageUrl || null,
-          upcycled: post.upcycled
-        };
-        const { data, error } = await supabaseClient.from('community_posts').insert(row).select('id, created_at').single();
-        if (error) {
-          throw error;
-        }
-        if (data && data.id != null) {
-          post.id = String(data.id);
-          post.createdAt = data.created_at || post.createdAt;
-        }
-      } catch (error) {
-        remoteSyncError = error.message || 'The community table is not available.';
-        console.warn('Community post could not be synced to Supabase; keeping it in this browser.', error.message);
-      }
-    }
-
-    localPosts.unshift(post);
-    if (!persist('posts', localPosts)) {
-      localPosts.shift();
-      submitButton.disabled = false;
+    if (!supabaseClient) {
+      showToast('Community publishing is unavailable right now. Please try again later.', 'error');
       return;
     }
-    elements.composerText.value = '';
-    resetAttachment();
-    submitButton.disabled = false;
-    activeTab = 'home';
-    window.atelierCommunityState.activeTab = activeTab;
-    elements.tabs.forEach((button) => {
-      const active = button.dataset.tab === activeTab;
-      button.classList.toggle('is-active', active);
-      if (active) {
-        button.setAttribute('aria-current', 'page');
-      } else {
-        button.removeAttribute('aria-current');
+
+    const submitButton = elements.composer.querySelector('[type="submit"]');
+    submitButton.disabled = true;
+    try {
+      const { data: sessionData, error: sessionError } = await supabaseClient.auth.getSession();
+      if (sessionError) throw sessionError;
+      const user = sessionData.session && sessionData.session.user;
+      if (!user) throw new Error('Your sign-in has expired. Log in again before posting.');
+
+      const topicValue = elements.composerTopic.value;
+      const forumTopic = FORUM_TOPICS.includes(topicValue) ? topicValue : '';
+      const tags = forumTopic ? ['STYLE FORUM', forumTopic.toUpperCase()] : ['COMMUNITY'];
+      const imageUrl = selectedFile ? await uploadImage(selectedFile) : '';
+      const postRow = {
+        user_id: user.id,
+        author_name: profile.name,
+        author_handle: ownHandle,
+        avatar_url: profile.avatarUrl || null,
+        content,
+        tags,
+        image_url: imageUrl || null,
+        upcycled: /mend|repair|upcycl|thrift|patch/i.test(`${content} ${forumTopic}`)
+      };
+      const { data, error } = await supabaseClient
+        .from('community_posts')
+        .insert(postRow)
+        .select('*')
+        .single();
+      if (error) throw error;
+      if (!data || data.id == null) throw new Error('Supabase did not return the saved post.');
+
+      const post = {
+        id: String(data.id),
+        userId: data.user_id || user.id,
+        author: data.author_name || profile.name,
+        handle: normalizeHandle(data.author_handle || ownHandle),
+        avatar: resolveAuthorAvatar(user.id, ownHandle),
+        content: data.content || content,
+        tags: Array.isArray(data.tags) ? data.tags : tags,
+        forumTopic: forumTopicFromRow(data),
+        likes: Number(data.likes || 0),
+        comments: [],
+        upcycled: Boolean(data.upcycled),
+        createdAt: data.created_at || new Date().toISOString(),
+        timestamp: formatTimestamp(data.created_at),
+        images: data.image_url ? [{ src: data.image_url, alt: 'Photo shared by the community' }] : []
+      };
+      window.atelierCommunityRemotePosts = [
+        post,
+        ...(window.atelierCommunityRemotePosts || []).filter((item) => item.id !== post.id)
+      ];
+      remoteCommentsByPostId.set(post.id, []);
+      loadedCommentPostIds.add(post.id);
+      elements.composerText.value = '';
+      elements.composerTopic.value = 'home';
+      resetAttachment();
+      composerOpen = false;
+      activeTab = forumTopic ? 'forums' : 'home';
+      window.atelierCommunityState.activeTab = activeTab;
+      elements.tabs.forEach((button) => {
+        const active = button.dataset.tab === activeTab;
+        button.classList.toggle('is-active', active);
+        if (active) button.setAttribute('aria-current', 'page');
+        else button.removeAttribute('aria-current');
+      });
+      renderFeed();
+      showToast(forumTopic ? `Your post was shared in ${forumTopic}.` : 'Your post has been shared.');
+      const inserted = [...elements.feed.querySelectorAll('[data-post-id]')]
+        .find((card) => card.dataset.postId === post.id);
+      if (inserted) {
+        inserted.classList.add('is-new');
+        inserted.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
       }
-    });
-    if (imageUploadFailed) {
-      showToast('Shared with a local photo fallback. Cloudinary was unavailable, so only this browser can see the image.', 'error');
-    } else if (remoteSyncError) {
-      showToast(`Saved on this device only; community sync failed: ${remoteSyncError}`, 'error');
-    } else {
-      showToast('Your post has been shared.');
-    }
-    renderFeed();
-    const inserted = elements.feed.querySelector(`[data-post-id="${CSS.escape(post.id)}"]`);
-    if (inserted) {
-      inserted.classList.add('is-new');
-      inserted.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    } catch (error) {
+      console.error('Unable to publish the community post.', error);
+      showToast(`Your post could not be saved: ${error.message || 'Please try again.'}`, 'error');
+    } finally {
+      submitButton.disabled = false;
     }
   }
 
@@ -852,21 +1418,187 @@ document.addEventListener('DOMContentLoaded', () => {
     showToast(savedIds.has(postId) ? 'Saved to your collection.' : 'Removed from Saved Posts.');
   }
 
-  function toggleFollow(handle) {
-    if (!requireLogin()) {
-      window.location.assign('login.html');
+  async function loadCommunityFollowData() {
+    if (!supabaseClient) return;
+    try {
+      const { data: sessionData, error: sessionError } = await supabaseClient.auth.getSession();
+      if (sessionError) throw sessionError;
+      currentUserId = sessionData.session && sessionData.session.user
+        ? String(sessionData.session.user.id || '')
+        : '';
+
+      const suggestionHandles = [...new Set(SUGGESTIONS.map((item) => normalizeHandle(item.handle).slice(1)))];
+      if (suggestionHandles.length) {
+        const { data: profiles, error: profilesError } = await supabaseClient
+          .from('profiles')
+          .select('id, username')
+          .in('username', suggestionHandles);
+        if (profilesError) throw profilesError;
+        profileIdsByHandle.clear();
+        (profiles || []).forEach((row) => {
+          profileIdsByHandle.set(normalizeHandle(row.username), String(row.id));
+        });
+      }
+      suggestionProfilesLoaded = true;
+
+      if (!currentUserId) {
+        followingUserIds.clear();
+        following.clear();
+        renderSuggestions();
+        return;
+      }
+
+      const [ownFollowsResult, followersCountResult] = await Promise.all([
+        supabaseClient.from('follows').select('following_id').eq('follower_id', currentUserId),
+        supabaseClient.from('follows')
+          .select('follower_id', { count: 'exact', head: true })
+          .eq('following_id', currentUserId)
+      ]);
+      if (ownFollowsResult.error) throw ownFollowsResult.error;
+      if (followersCountResult.error) throw followersCountResult.error;
+
+      const followedIds = (ownFollowsResult.data || []).map((row) => String(row.following_id));
+      followingUserIds.clear();
+      followedIds.forEach((id) => followingUserIds.add(id));
+      following.clear();
+      if (followedIds.length) {
+        const { data: followedProfiles, error: followedProfilesError } = await supabaseClient
+          .from('profiles')
+          .select('id, username')
+          .in('id', followedIds);
+        if (followedProfilesError) throw followedProfilesError;
+        (followedProfiles || []).forEach((row) => {
+          const handle = normalizeHandle(row.username);
+          if (handle !== '@atelier-member') following.add(handle);
+        });
+      }
+
+      const followingCountResult = await supabaseClient.from('follows')
+        .select('following_id', { count: 'exact', head: true })
+        .eq('follower_id', currentUserId);
+      if (followingCountResult.error) throw followingCountResult.error;
+      profile.followingCount = Number(followingCountResult.count || 0);
+      profile.followersCount = Number(followersCountResult.count || 0);
+      elements.profileFollowingCount.textContent = String(profile.followingCount);
+      elements.profileFollowerCount.textContent = String(profile.followersCount);
+      persistSet('following', following);
+      renderSuggestions();
+      renderFeed();
+    } catch (error) {
+      console.error('Community follow relationships could not be loaded from Supabase.', error);
+      showToast(`Follow status could not be loaded: ${error.message || 'Please try again.'}`, 'error');
+    }
+  }
+
+  async function resolveFollowTargetId(handle) {
+    const cachedId = profileIdsByHandle.get(handle);
+    if (cachedId) return cachedId;
+    const { data, error } = await supabaseClient
+      .from('profiles')
+      .select('id, username')
+      .ilike('username', handle.replace(/^@/, ''))
+      .limit(1);
+    if (error) throw error;
+    if (!data || !data.length) throw new Error('This person does not have an Atelier profile to follow.');
+    const id = String(data[0].id);
+    profileIdsByHandle.set(normalizeHandle(data[0].username), id);
+    return id;
+  }
+
+  async function toggleFollow(handle) {
+    handle = normalizeHandle(handle);
+    if (!supabaseClient) {
+      if (!requireLogin()) {
+        window.location.assign('login.html');
+        return;
+      }
+      const wasFollowing = following.has(handle);
+      if (wasFollowing) following.delete(handle);
+      else following.add(handle);
+      if (!persistSet('following', following)) {
+        if (wasFollowing) following.add(handle);
+        else following.delete(handle);
+        renderSuggestions();
+        renderFeed();
+        showToast('The follow preference could not be saved in this browser.', 'error');
+        return;
+      }
+      renderSuggestions();
+      renderFeed();
+      showToast(following.has(handle) ? 'Added to your friends feed.' : 'Removed from your friends feed.');
       return;
     }
-    handle = normalizeHandle(handle);
-    if (following.has(handle)) {
-      following.delete(handle);
-    } else {
-      following.add(handle);
-    }
-    persistSet('following', following);
+
+    if (pendingFollowHandles.has(handle)) return;
+    pendingFollowHandles.add(handle);
     renderSuggestions();
-    renderFeed();
-    showToast(following.has(handle) ? 'Added to your friends feed.' : 'Removed from your friends feed.');
+    let targetId = '';
+    let previousFollowing = false;
+    let followStateChanged = false;
+    try {
+      await followDataPromise;
+      const { data: sessionData, error: sessionError } = await supabaseClient.auth.getSession();
+      if (sessionError) throw sessionError;
+      const sessionUser = sessionData.session && sessionData.session.user;
+      if (!sessionUser) {
+        window.location.assign('login.html');
+        return;
+      }
+      currentUserId = String(sessionUser.id);
+      targetId = await resolveFollowTargetId(handle);
+      if (targetId === currentUserId) {
+        showToast('You are already viewing your own profile.');
+        return;
+      }
+
+      previousFollowing = followingUserIds.has(targetId);
+      const shouldFollow = !previousFollowing;
+      if (shouldFollow) {
+        followingUserIds.add(targetId);
+        following.add(handle);
+      } else {
+        followingUserIds.delete(targetId);
+        following.delete(handle);
+      }
+      followStateChanged = true;
+      profile.followingCount = Math.max(0, Number(profile.followingCount || 0) + (shouldFollow ? 1 : -1));
+      elements.profileFollowingCount.textContent = String(profile.followingCount);
+      renderSuggestions();
+      renderFeed();
+
+      const result = shouldFollow
+        ? await supabaseClient.from('follows').insert({
+          follower_id: currentUserId,
+          following_id: targetId
+        })
+        : await supabaseClient.from('follows').delete()
+          .eq('follower_id', currentUserId)
+          .eq('following_id', targetId);
+      if (result.error) throw result.error;
+      if (persistSet('following', following)) {
+        showToast(shouldFollow ? 'You are now following this profile.' : 'You unfollowed this profile.');
+      } else {
+        showToast('Your follow was saved, but the Friends feed cache could not be updated.', 'error');
+      }
+    } catch (error) {
+      console.error('Community follow update failed.', error);
+      if (followStateChanged) {
+        if (previousFollowing) {
+          followingUserIds.add(targetId);
+          following.add(handle);
+        } else {
+          followingUserIds.delete(targetId);
+          following.delete(handle);
+        }
+        profile.followingCount = Math.max(0, Number(profile.followingCount || 0) + (previousFollowing ? 1 : -1));
+        elements.profileFollowingCount.textContent = String(profile.followingCount);
+      }
+      showToast(`Could not update this follow: ${error.message || 'Please try again.'}`, 'error');
+    } finally {
+      pendingFollowHandles.delete(handle);
+      renderSuggestions();
+      renderFeed();
+    }
   }
 
   async function deletePost(postId, button) {
@@ -943,6 +1675,14 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
+  elements.newPostButton.addEventListener('click', () => {
+    if (!requireLogin()) return;
+    composerOpen = true;
+    renderFeed();
+    elements.composer.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    elements.composerText.focus();
+  });
+
   elements.filters.forEach((button) => {
     button.addEventListener('click', () => {
       activeFilter = button.dataset.filter;
@@ -979,6 +1719,9 @@ document.addEventListener('DOMContentLoaded', () => {
       const panel = card.querySelector('[data-comments]');
       panel.hidden = !panel.hidden;
       if (!panel.hidden) {
+        if ((window.atelierCommunityRemotePosts || []).some((post) => String(post.id) === card.dataset.postId)) {
+          loadPostComments(card.dataset.postId);
+        }
         panel.querySelector('input').focus();
       }
     }
@@ -988,21 +1731,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const commentForm = event.target.closest('[data-comment-form]');
     if (commentForm) {
       event.preventDefault();
-      const card = commentForm.closest('[data-post-id]');
-      const input = commentForm.elements.comment;
-      const text = input.value.trim();
-      if (!text || !requireLogin()) {
-        return;
-      }
-      const postId = card.dataset.postId;
-      localComments[postId] = [...(localComments[postId] || []), { author: ownHandle, body: text }];
-      if (persist('comments', localComments)) {
-        const post = mergePosts(window.atelierCommunityRemotePosts || []).find((item) => item.id === postId);
-        const panel = card.querySelector('[data-comments]');
-        renderComments(post || { id: postId, comments: [] }, panel);
-        card.querySelector('[data-comment-count]').lastChild.textContent = String(getComments(post || {}).length);
-        showToast('Comment added.');
-      }
+      submitCommentForm(commentForm);
       return;
     }
 
@@ -1102,13 +1831,22 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  elements.memberSearch.addEventListener('input', onMemberSearchInput);
   initializeProfile();
   window.addEventListener('pageshow', refreshProfileAvatar);
+  window.addEventListener('atelier:profile-updated', refreshProfileAvatar);
   window.addEventListener('storage', (event) => {
-    if (event.key === 'atelierUser') refreshProfileAvatar();
+    if (
+      event.key === window.atelierSupabase.activeProfileIdKey
+      || (event.key && event.key.startsWith('atelier_profile_'))
+    ) {
+      refreshProfileAvatar();
+    }
   });
   initializeSupabase();
+  followDataPromise = loadCommunityFollowData();
   renderSuggestions();
   renderFeed();
+  refreshCurrentUserProfileAvatar();
   loadRemotePosts();
 });

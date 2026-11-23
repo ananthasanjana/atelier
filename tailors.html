@@ -90,6 +90,7 @@
           <span class="tailors-fetch-status" id="tailors-fetch-status" role="status" aria-live="polite" hidden></span>
         </header>
         <div class="tailors-community-actions">
+          <button class="tailors-suggest-button" id="open-register-dialog" type="button">Register as Tailor / Designer</button>
           <button class="tailors-suggest-button" id="open-suggest-dialog" type="button">Know a great local tailor? + Add to map</button>
         </div>
         <div class="tailors-card-list" id="tailors-card-list"></div>
@@ -167,6 +168,43 @@
       </form>
     </dialog>
 
+    <dialog class="tailors-form-dialog" id="register-dialog" aria-labelledby="register-title">
+      <form class="tailors-form-dialog__form" id="register-form">
+        <button class="tailors-dialog-close" type="button" data-close-register aria-label="Close registration dialog">×</button>
+        <p class="tailors-eyebrow">MAKE YOUR WORK FINDABLE</p>
+        <h2 id="register-title">Register as Tailor / Designer</h2>
+        <p class="tailors-form-intro">Create a public directory card linked to your Atelier profile. Any signed-in Atelier member can register.</p>
+        <label for="register-name">Studio or display name</label>
+        <input id="register-name" name="name" type="text" maxlength="100" required>
+        <label for="register-specialty">Specialty</label>
+        <select id="register-specialty" name="specialty" required>
+          <option value="">Choose a specialty</option>
+          <option>Alterations</option>
+          <option>Embroidery</option>
+          <option>Custom Upcycling</option>
+          <option>Zipper Repair</option>
+          <option>Denim Revival</option>
+          <option>Fashion Design</option>
+          <option>Other</option>
+        </select>
+        <label for="register-area">Neighborhood</label>
+        <select id="register-area" name="neighborhood" required>
+          <option value="">Choose an area</option>
+          <option>Jubilee Hills</option>
+          <option>Banjara Hills</option>
+          <option>Madhapur</option>
+          <option>Gachibowli</option>
+          <option>Kondapur</option>
+          <option>Secunderabad</option>
+          <option>Himayatnagar</option>
+        </select>
+        <label for="register-bio">A short introduction <span>(optional)</span></label>
+        <textarea id="register-bio" name="bio" rows="3" maxlength="400"></textarea>
+        <p class="tailors-form-message" id="register-message" role="status" hidden></p>
+        <button class="tailors-button tailors-button--primary tailors-form-submit" type="submit">Add my profile</button>
+      </form>
+    </dialog>
+
     <dialog class="tailors-form-dialog" id="review-dialog" aria-labelledby="review-title">
       <form class="tailors-form-dialog__form" id="review-form">
         <button class="tailors-dialog-close" type="button" data-close-review aria-label="Close dialog">×</button>
@@ -196,6 +234,7 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/atelier-supabase.js"></script>
+    <script src="js/atelier-auth.js"></script>
     <script src="js/nav-auth.js"></script>
     <script src="js/tailors.js"></script>
   </body>

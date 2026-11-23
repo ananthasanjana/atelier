@@ -2,45 +2,20 @@
   'use strict';
 
   const redirectKey = 'atelier_redirect_after_login';
-  const initializedKey = 'atelierSessionInitialized';
-  const validUserFields = ['name', 'username', 'email'];
 
   function getUser() {
     try {
-      if (window.atelierSupabase) {
-        const profile = window.atelierSupabase.readCachedProfile();
-        if (profile) {
-          return {
-            ...profile,
-            name: profile.display_name,
-            displayName: profile.display_name,
-            avatarUrl: profile.avatar_url,
-            coverUrl: profile.banner_url,
-            role: window.atelierSupabase.displayRole(profile.role)
-          };
-        }
-      }
-
-      if (window.localStorage.getItem(initializedKey) !== 'true') {
-        window.localStorage.removeItem('atelierUser');
-        window.localStorage.setItem(initializedKey, 'true');
-        return null;
-      }
-
-      const saved = window.localStorage.getItem('atelierUser');
-      if (!saved) return null;
-
-      const user = JSON.parse(saved);
-      if (
-        user
-        && typeof user === 'object'
-        && !Array.isArray(user)
-        && validUserFields.some((field) => typeof user[field] === 'string' && user[field].trim())
-      ) {
-        return user;
-      }
-      if (user) console.error('The stored Atelier user session has an invalid shape.');
-      return null;
+      if (!window.atelierSupabase) return null;
+      const profile = window.atelierSupabase.readCachedProfile();
+      if (!profile || !profile.id) return null;
+      return {
+        ...profile,
+        name: profile.display_name,
+        displayName: profile.display_name,
+        avatarUrl: profile.avatar_url,
+        coverUrl: profile.banner_url,
+        role: window.atelierSupabase.displayRole(profile.role)
+      };
     } catch (error) {
       console.error('Unable to verify the Atelier user session.', error);
       return null;

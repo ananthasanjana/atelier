@@ -222,11 +222,17 @@ document.addEventListener('DOMContentLoaded', () => {
   const suggestDialog = document.getElementById('suggest-dialog');
   const suggestForm = document.getElementById('suggest-form');
   const suggestMessage = document.getElementById('suggest-message');
+  const registerDialog = document.getElementById('register-dialog');
+  const registerForm = document.getElementById('register-form');
+  const registerMessage = document.getElementById('register-message');
   const reviewDialog = document.getElementById('review-dialog');
   const reviewForm = document.getElementById('review-form');
   const reviewMessage = document.getElementById('review-message');
   let activeBookingShop = null;
   let activeReviewShop = null;
+  let supabaseClient = null;
+  let remoteTailors = [];
+  let currentUserData = null;
   let currentArea = 'all';
   let liveShops = BUILT_IN_TAILORS
     .map((shop) => normalizeStoredShop({
@@ -311,10 +317,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const lng = Number(raw.lng == null ? raw.lon : raw.lng);
     if (!name || !Number.isFinite(lat) || !Number.isFinite(lng)) return null;
 
-    const phone = String(raw.phone || raw.contactPhone || '').trim();
-    const services = Array.isArray(raw.services)
-      ? raw.services.filter((service) => SERVICES.includes(service))
-      : [];
+    const phone = String(raw.phone || raw.contact_info || raw.contact || raw.contactPhone || '').trim();
+    const rawServices = raw.services || raw.specialties || raw.specialty || raw.specialization;
+    const services = [...new Set((Array.isArray(rawServices) ? rawServices : [rawServices])
+      .flatMap((service) => String(service || '').split(/[,;|]/))
+      .map((service) => service.trim())
+      .filter((service) => service && service.length <= 60))];
     const type = String(raw.osmType || raw.osm_type || '');
     const osmId = raw.osmId == null ? raw.osm_id : raw.osmId;
     const id = String(raw.id || (osmId != null
@@ -330,6 +338,7 @@ document.addEventListener('DOMContentLoaded', () => {
       street: String(raw.street || raw.address || raw['addr:street'] || ''),
       phone: phone || 'Call for inquiry',
       phoneHref: toTelHref(phone),
+      priceRange: String(raw.price_range || raw.priceRange || '').trim(),
       is_verified: Boolean(verified),
       rating: Number.isFinite(Number(raw.rating)) ? Math.max(0, Math.min(5, Number(raw.rating))) : 0,
       reviewCount: Number.isFinite(Number(raw.reviewCount)) ? Math.max(0, Number(raw.reviewCount)) : 0,
@@ -339,10 +348,96 @@ document.addEventListener('DOMContentLoaded', () => {
       menu: String(raw.menu || ''),
       image: safeImageUrl(raw.image),
       gallery: Array.isArray(raw.gallery) ? raw.gallery.map(safeImageUrl) : [],
+      userId: String(raw.user_id || raw.userId || ''),
+      username: String(raw.username || raw.handle || raw.profile_username || ''),
       osmType: type,
       osmId: osmId == null ? '' : String(osmId),
       source: String(raw.source || (osmId != null ? 'osm' : 'community'))
     };
+  }
+
+  function mapDatabaseTailor(row, profile) {
+    const area = String(row.neighborhood || row.area || profile && profile.neighborhood || 'Hyderabad');
+    const center = areaCenters[area] || DEFAULT_CENTER;
+    const latitude = Number(row.lat == null ? row.latitude : row.lat);
+    const longitude = Number(row.lng == null ? (row.lon == null ? row.longitude : row.lon) : row.lng);
+    return {
+      ...row,
+      id: String(row.id || `tailor-${row.user_id || row.name}`),
+      name: String(row.name || row.display_name || row.studio_name || 'Atelier Tailor'),
+      username: String(row.username || row.handle || profile && profile.username || ''),
+      lat: Number.isFinite(latitude) ? latitude : center[0],
+      lng: Number.isFinite(longitude) ? longitude : center[1],
+      area,
+      street: String(row.address || row.street || ''),
+      services: row.services || row.specialties || row.specialty || row.specialization || [],
+      phone: String(row.phone || row.contact_info || row.contact || row.contact_phone || ''),
+      priceRange: String(row.price_range || row.priceRange || ''),
+      bio: String(row.bio || 'Tailor / designer in the Atelier directory.'),
+      image: row.image || row.avatar_url || row.image_url || 'assets/sewing-repair.jpg',
+      is_verified: Boolean(row.is_verified || row.verified),
+      source: 'supabase',
+      user_id: String(row.user_id || '')
+    };
+  }
+
+  function profileUrlForShop(shop) {
+    const username = String(shop.username || '').trim().replace(/^@/, '');
+    if (username) return `profile.html?user=${encodeURIComponent(username)}`;
+    const userId = String(shop.userId || shop.user_id || '').trim();
+    return userId ? `profile.html?id=${encodeURIComponent(userId)}` : '';
+  }
+
+  async function loadRemoteTailors() {
+    try {
+      if (!window.atelierSupabase) throw new Error('Supabase is unavailable.');
+      supabaseClient = window.atelierSupabase.getClient();
+      const { data, error } = await supabaseClient
+        .from('tailors')
+        .select('*');
+      if (error) throw error;
+
+      const userIds = [...new Set((data || []).map((row) => row.user_id).filter(Boolean).map(String))];
+      const profilesById = new Map();
+      if (userIds.length) {
+        const { data: profiles, error: profileError } = await supabaseClient
+          .from('profiles')
+          .select('id, username, display_name')
+          .in('id', userIds);
+        if (profileError) {
+          console.warn('Tailor profile usernames could not be loaded.', profileError);
+        } else {
+          (profiles || []).forEach((profile) => profilesById.set(String(profile.id), profile));
+        }
+      }
+
+      remoteTailors = (data || []).map((row) => (
+        mapDatabaseTailor(row, profilesById.get(String(row.user_id || '')))
+      ));
+      refreshServiceFilter();
+      renderShops();
+    } catch (error) {
+      console.error('Unable to load Atelier tailors from Supabase.', error);
+      showTailorsToast('Atelier directory profiles could not be loaded. Showing local and map listings.', 'error');
+    }
+  }
+
+  function refreshServiceFilter() {
+    const selected = serviceFilter.value;
+    const options = new Set([
+      ...SERVICES,
+      ...getAllShops().flatMap((shop) => shop.services)
+    ]);
+    options.forEach((service) => {
+      if ([...serviceFilter.options].some((option) => option.value === service)) return;
+      const option = document.createElement('option');
+      option.value = service;
+      option.textContent = service;
+      serviceFilter.append(option);
+    });
+    serviceFilter.value = [...serviceFilter.options].some((option) => option.value === selected)
+      ? selected
+      : 'all';
   }
 
   function normalizeOsmElement(element) {
@@ -441,6 +536,7 @@ document.addEventListener('DOMContentLoaded', () => {
         phone: preferred.phoneHref ? preferred.phone : secondary.phone,
         phoneHref: preferred.phoneHref || secondary.phoneHref,
         services: preferred.services.length ? preferred.services : secondary.services,
+        priceRange: preferred.priceRange || secondary.priceRange,
         price: preferred.price || secondary.price,
         bio: preferred.bio === 'A local tailor listed by the Atelier community.'
           ? secondary.bio
@@ -453,6 +549,10 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     liveShops.forEach(addShop);
+    remoteTailors
+      .map((shop) => normalizeStoredShop(shop, Boolean(shop.is_verified)))
+      .filter(Boolean)
+      .forEach(addShop);
     submittedShops
       .map((shop) => normalizeStoredShop(shop, false))
       .filter(Boolean)
@@ -543,6 +643,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function cardMarkup(shop) {
     const rating = getRating(shop);
+    const profileUrl = profileUrlForShop(shop);
+    const profileLink = profileUrl
+      ? `<a class="tailor-profile-link" href="${escapeHTML(profileUrl)}">View Atelier profile →</a>`
+      : '';
     const address = shop.is_verified && shop.street
       ? `<address class="tailor-card__address">${escapeHTML(shop.street)}</address>`
       : '';
@@ -557,8 +661,12 @@ document.addEventListener('DOMContentLoaded', () => {
         ${shop.menu ? `<p class="tailor-card__menu"><span>MENU HIGHLIGHT</span>${escapeHTML(shop.menu)}</p>` : ''}`
       : `<div class="tailor-card__details tailor-card__details--community">
           <p><span>NEIGHBORHOOD</span><strong>${escapeHTML(shop.area)}</strong></p>
-          <p><span>PHONE</span>${phone}</p>
+          ${shop.priceRange ? `<p><span>PRICE RANGE</span><strong>${escapeHTML(shop.priceRange)}</strong></p>` : ''}
+          <p><span>CONTACT</span>${phone}</p>
         </div>`;
+    const nameMarkup = profileUrl
+      ? `<a href="${escapeHTML(profileUrl)}">${escapeHTML(shop.name)}</a>`
+      : escapeHTML(shop.name);
     const actions = shop.is_verified
       ? `<div class="tailor-card__actions">
           <button class="tailors-button tailors-button--primary" type="button" data-book-shop="${escapeHTML(shop.id)}">Book Repair</button>
@@ -576,13 +684,14 @@ document.addEventListener('DOMContentLoaded', () => {
         <img class="tailor-card__image" src="${escapeHTML(safeImageUrl(shop.image))}" alt="" loading="lazy">
         <div class="tailor-card__body">
           <div class="tailor-card__title-row">
-            <h2>${escapeHTML(shop.name)}</h2>
+            <h2>${nameMarkup}</h2>
             ${statusBadge(shop)}
           </div>
           <div class="tailor-card__meta">${ratingMarkup(rating)}<span>${escapeHTML(shop.area)}</span></div>
           ${address}
           <p class="tailor-card__bio">${escapeHTML(shop.bio)}</p>
           <div class="tailors-tags">${serviceTags(shop)}</div>
+          ${profileLink}
           ${reviewTextMarkup(shop)}
           ${verifiedDetails}
           ${photoGalleryMarkup(shop, rating)}
@@ -747,6 +856,7 @@ document.addEventListener('DOMContentLoaded', () => {
         phone: shop.phoneHref ? shop.phone : existing.phone,
         phoneHref: shop.phoneHref || existing.phoneHref,
         services: shop.services.length ? shop.services : existing.services,
+        priceRange: shop.priceRange || existing.priceRange,
         price: shop.price || existing.price,
         rating: shop.rating || existing.rating,
         reviewCount: shop.reviewCount || existing.reviewCount,
@@ -960,7 +1070,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   function closeDialogOnBackdrop(dialog, form) {
-    dialog.querySelectorAll('[data-close-booking], [data-close-suggest], [data-close-review]').forEach((button) => {
+    dialog.querySelectorAll('[data-close-booking], [data-close-suggest], [data-close-register], [data-close-review]').forEach((button) => {
       button.addEventListener('click', () => dialog.close());
     });
     dialog.addEventListener('click', (event) => {
@@ -975,6 +1085,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   closeDialogOnBackdrop(bookingDialog, bookingForm);
   closeDialogOnBackdrop(suggestDialog, suggestForm);
+  closeDialogOnBackdrop(registerDialog, registerForm);
   closeDialogOnBackdrop(reviewDialog, reviewForm);
 
   document.getElementById('near-me-button').addEventListener('click', () => {
@@ -1007,6 +1118,109 @@ document.addEventListener('DOMContentLoaded', () => {
     suggestMessage.hidden = true;
     suggestForm.reset();
     suggestDialog.showModal();
+  });
+
+  async function getCurrentRegistrationUser() {
+    if (!window.atelierSupabase) throw new Error('Supabase authentication is unavailable.');
+    supabaseClient = window.atelierSupabase.getClient();
+    const { data, error } = await supabaseClient.auth.getSession();
+    if (error) throw error;
+    const user = data.session && data.session.user;
+    if (!user) return null;
+    let profile = window.atelierSupabase.readCachedProfile();
+    if (!profile || profile.id !== user.id) profile = null;
+    const metadata = user.user_metadata || {};
+    const rawUsername = String(profile && profile.username || metadata.username || metadata.user_name || user.email || '');
+    return {
+      id: user.id,
+      username: rawUsername.replace(/^@/, '').split('@')[0],
+      name: String(profile && profile.display_name || metadata.display_name || metadata.full_name || user.email || 'Atelier Member')
+    };
+  }
+
+  document.getElementById('open-register-dialog').addEventListener('click', async () => {
+    try {
+      currentUserData = await getCurrentRegistrationUser();
+      if (!currentUserData) {
+        window.atelierAuth.prepareLoginRedirect();
+        window.location.assign('login.html');
+        return;
+      }
+      registerForm.reset();
+      document.getElementById('register-name').value = currentUserData.name;
+      registerMessage.hidden = true;
+      registerMessage.replaceChildren();
+      registerDialog.showModal();
+    } catch (error) {
+      console.error('Unable to verify the Atelier account for tailor registration.', error);
+      showTailorsToast(`Could not open registration: ${error.message}`, 'error');
+    }
+  });
+
+  registerForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    if (!registerForm.reportValidity()) return;
+    const submitButton = registerForm.querySelector('[type="submit"]');
+    const formData = new FormData(registerForm);
+    submitButton.disabled = true;
+    submitButton.textContent = 'Saving profile...';
+    registerMessage.hidden = true;
+
+    try {
+      currentUserData = await getCurrentRegistrationUser();
+      if (!currentUserData) throw new Error('Your sign-in has expired. Log in again before registering.');
+      const neighborhood = String(formData.get('neighborhood') || '');
+      const specialty = String(formData.get('specialty') || '').trim();
+      const row = {
+        user_id: currentUserData.id,
+        name: String(formData.get('name') || '').trim(),
+        specialty,
+        neighborhood,
+        bio: String(formData.get('bio') || '').trim()
+      };
+      const { data, error } = await supabaseClient
+        .from('tailors')
+        .insert(row)
+        .select('*')
+        .single();
+      if (error) throw error;
+      if (!data) throw new Error('Supabase did not return the registered tailor profile.');
+
+      const registered = mapDatabaseTailor({
+        ...data,
+        username: data.username || currentUserData.username,
+        name: data.name || row.name,
+        specialty: data.specialty || specialty,
+        neighborhood: data.neighborhood || neighborhood,
+        bio: data.bio || row.bio
+      }, currentUserData);
+      remoteTailors = [registered, ...remoteTailors.filter((shop) => shop.id !== registered.id)];
+      refreshServiceFilter();
+      areaFilter.value = neighborhood;
+      currentArea = neighborhood;
+      map.flyTo([registered.lat, registered.lng], 14, { duration: 0.7 });
+      renderShops();
+
+      const profileLink = document.createElement('a');
+      profileLink.href = profileUrlForShop(registered) || 'profile.html';
+      profileLink.textContent = 'View your Atelier profile';
+      profileLink.className = 'tailor-profile-link';
+      registerMessage.replaceChildren(
+        document.createTextNode('Your profile was added to the tailor directory. '),
+        profileLink
+      );
+      registerMessage.dataset.kind = 'success';
+      registerMessage.hidden = false;
+      showTailorsToast('Your tailor / designer profile was registered.');
+    } catch (error) {
+      console.error('Unable to register the Atelier tailor profile.', error);
+      registerMessage.textContent = `Your profile could not be registered: ${error.message || 'Please try again.'}`;
+      registerMessage.dataset.kind = 'error';
+      registerMessage.hidden = false;
+    } finally {
+      submitButton.disabled = false;
+      submitButton.textContent = 'Add my profile';
+    }
   });
 
   suggestForm.addEventListener('submit', (event) => {
@@ -1127,4 +1341,5 @@ document.addEventListener('DOMContentLoaded', () => {
   window.requestAnimationFrame(() => map.invalidateSize());
   window.addEventListener('resize', () => map.invalidateSize());
   fetchLiveTailors();
+  loadRemoteTailors();
 });

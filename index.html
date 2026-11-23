@@ -191,6 +191,34 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/atelier-supabase.js"></script>
+    <script>
+      (() => {
+        const isOAuthCallback = window.location.hash.includes('access_token')
+          || new URLSearchParams(window.location.search).has('code');
+        if (!isOAuthCallback) return;
+
+        const auth = window.atelierSupabase.getClient().auth;
+        let redirectStarted = false;
+        const redirectToProfile = () => {
+          if (redirectStarted) return;
+          redirectStarted = true;
+          window.location.replace('profile.html');
+        };
+        auth.onAuthStateChange((event, session) => {
+          if (session && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION')) {
+            redirectToProfile();
+          }
+        });
+        auth.getSession()
+          .then(({ data, error }) => {
+            if (error) throw error;
+            if (data.session) redirectToProfile();
+          })
+          .catch((error) => {
+            console.error('Unable to complete the Google sign-in callback.', error);
+          });
+      })();
+    </script>
     <script src="js/nav-auth.js"></script>
   </body>
 </html>

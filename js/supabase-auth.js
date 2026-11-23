@@ -18,7 +18,7 @@
     button.disabled = true;
     feedback.textContent = 'Redirecting to Google...';
     try {
-      const callback = new URL('profile.html', window.location.origin).toString();
+      const callback = new URL('profile.html', window.location.href).href;
       const { error } = await window.atelierSupabase.getClient().auth.signInWithOAuth({
         provider: 'google',
         options: {
@@ -54,8 +54,8 @@
         }
       });
       window.localStorage.removeItem('atelierPendingRole');
-      const destination = window.atelierAuth.consumeRedirectAfterLogin('profile.html');
-      window.location.assign(destination);
+      window.atelierAuth.consumeRedirectAfterLogin('profile.html');
+      window.location.assign('profile.html');
       return profile;
     } catch (error) {
       console.error('Unable to finish Google sign-in.', error);

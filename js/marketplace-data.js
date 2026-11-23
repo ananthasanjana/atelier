@@ -40,3 +40,27 @@ window.ensureAtelierMarketplaceItemsStored = function () {
     console.error('Unable to store the seeded Atelier marketplace items.', error);
   }
 };
+
+window.normalizeAtelierMarketplaceListing = function (row) {
+  const tags = Array.isArray(row.tags) ? row.tags : [];
+  const category = String(row.category || tags[0] || 'Atelier find');
+  return {
+    ...row,
+    id: String(row.id || ''),
+    title: String(row.item_name || row.title || row.name || 'Atelier find'),
+    price: Number(row.price) || 0,
+    category,
+    condition: String(row.condition || 'Good'),
+    tags: tags.length ? tags : [category],
+    seller: String(row.seller_username || row.seller || 'atelier-maker').replace(/^@/, ''),
+    seller_id: row.seller_id || '',
+    sellerType: String(row.seller_type || row.sellerType || 'community'),
+    upiId: String(row.upi_id || row.upiId || ''),
+    contact: String(row.contact || row.whatsapp || ''),
+    image: String(row.image_url || row.image || row.photo_url || ''),
+    description: String(row.description || ''),
+    color: String(row.color || 'cream'),
+    status: String(row.status || 'available'),
+    supabaseListing: true
+  };
+};

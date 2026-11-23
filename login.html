@@ -93,17 +93,13 @@
         const form = document.getElementById('login-form');
         const feedback = document.getElementById('login-feedback');
         const googleButton = document.getElementById('google-login');
+        const auth = window.atelierSupabase.getClient().auth;
 
-        async function finishLogin(user) {
-          try {
-            await window.atelierSupabase.cacheAuthenticatedProfile(user, { createIfMissing: true });
-            const destination = window.atelierAuth.consumeRedirectAfterLogin('profile.html');
-            window.location.assign(destination);
-          } catch (error) {
-            console.error('Unable to load the Atelier profile after login.', error);
-            feedback.textContent = `Login succeeded, but your profile could not be loaded: ${error.message}`;
+        auth.onAuthStateChange((event, session) => {
+          if (session && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION')) {
+            window.location.replace('profile.html');
           }
-        }
+        });
 
         form.addEventListener('submit', async (event) => {
           event.preventDefault();
@@ -111,13 +107,12 @@
           submitButton.disabled = true;
           feedback.textContent = 'Signing in...';
           try {
-            const { data, error } = await window.atelierSupabase.getClient().auth.signInWithPassword({
+            const { data, error } = await auth.signInWithPassword({
               email: document.getElementById('login-identity').value.trim(),
               password: document.getElementById('login-password').value
             });
             if (error) throw error;
-            if (!data.user) throw new Error('Supabase did not return a user.');
-            await finishLogin(data.user);
+            if (!data.session) throw new Error('Supabase did not return an active session.');
           } catch (error) {
             console.error('Email and password login failed.', error);
             feedback.textContent = error.message || 'Login failed. Check your email and password.';

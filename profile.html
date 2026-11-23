@@ -54,23 +54,42 @@
               </button>
             </div>
             <div class="profile-identity__text">
-              <h1 id="profile-display-name">sanj</h1>
-              <p id="profile-username">@sanjs4n</p>
+              <div class="profile-identity__name-row">
+                <h1 id="profile-display-name"></h1>
+              </div>
+              <p id="profile-username"></p>
             </div>
           </div>
-          <p class="profile-bio" id="profile-bio">born cool like that
-im a college student who loves fashion and loves to thrift!
-hop along for some cool tips lol</p>
+          <p class="profile-bio" id="profile-bio"></p>
+          <section class="profile-tailor-studio" id="profile-tailor-studio" aria-labelledby="profile-tailor-studio-title" hidden>
+            <header class="profile-tailor-studio__header">
+              <h2 id="profile-tailor-studio-title">Workshop / Studio Location</h2>
+              <button class="profile-tailor-studio__edit" id="profile-tailor-edit" type="button" hidden>Edit Location</button>
+            </header>
+            <dl class="profile-tailor-studio__details">
+              <div><dt>Neighborhood / Address</dt><dd id="profile-tailor-location">Not listed yet</dd></div>
+              <div><dt>Specialty</dt><dd id="profile-tailor-specialty">Not listed yet</dd></div>
+              <div><dt>Price Range</dt><dd id="profile-tailor-price-range">Ask for a quote</dd></div>
+              <div><dt>Contact</dt><dd id="profile-tailor-contact">Not listed yet</dd></div>
+            </dl>
+          </section>
           <p class="profile-role-details" id="profile-role-details" hidden></p>
-          <p class="profile-stats">
-            <span><strong id="profile-following-count">125</strong> Following</span>
-            <span><strong id="profile-follower-count">578</strong> Followers</span>
-          </p>
+          <div class="profile-stats">
+            <button class="profile-stat-link" type="button" data-open-connections="following" aria-haspopup="dialog">
+              <strong id="profile-following-count">0</strong> Following
+            </button>
+            <button class="profile-stat-link" type="button" data-open-connections="followers" aria-haspopup="dialog">
+              <strong id="profile-follower-count">0</strong> Followers
+            </button>
+          </div>
           <div class="profile-actions">
             <button class="profile-edit-button" id="open-profile-editor" type="button">Edit Profile</button>
             <button class="profile-logout-button" id="profile-logout-button" type="button">Log out</button>
             <button class="profile-follow-button" id="profile-follow-button" type="button" hidden>Follow</button>
           </div>
+          <aside class="profile-onboarding" id="profile-welcome" aria-label="Complete your profile" hidden>
+            <p><strong>Complete Your Profile</strong> — Welcome to Atelier! Personalize your profile with a username, bio, and photo.</p>
+          </aside>
           <div class="profile-role">
             <svg id="profile-role-icon" viewBox="0 0 32 32" aria-hidden="true">
               <path d="M3 5h4l3 16h15l4-12H9"></path>
@@ -101,47 +120,7 @@ hop along for some cool tips lol</p>
         <div class="profile-posts__divider"></div>
 
         <div class="profile-post-list" id="profile-post-list">
-          <article class="profile-post" data-post-id="post-1" tabindex="0" aria-label="Open post: Fast Fashion brands are greedy">
-            <div class="profile-post__title-row">
-              <h3>Fast Fashion brands are greedy</h3>
-              <time datetime="2026-11-14">• Nov 14</time>
-            </div>
-            <p>dont you guys think fast fashion brands these are doing too much? like the skims advent calender was just not it they give low quality products and price them really high! we gotta do sth abt this</p>
-            <div class="profile-post__footer">
-              <div class="profile-post__counts">
-                <span aria-label="17 likes">
-                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1.1L12 21l7.8-7.5 1.1-1.1a5.5 5.5 0 0 0-.1-7.8Z"></path></svg>
-                  <span class="post-like-count">17</span>
-                </span>
-                <span aria-label="4 comments">
-                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11.5a8.5 8.5 0 0 1-12.8 7.3L3 20l1.2-4A8.5 8.5 0 1 1 20 11.5Z"></path></svg>
-                  <span class="post-comment-count">4</span>
-                </span>
-              </div>
-              <button class="profile-post__comment" type="button">Comment</button>
-            </div>
-          </article>
-
-          <article class="profile-post" data-post-id="post-2" tabindex="0" aria-label="Open post: i have a really bad stain on my white shirt!">
-            <div class="profile-post__title-row">
-              <h3>i have a really bad stain on my white shirt!</h3>
-              <time datetime="2026-11-09">• Nov 9</time>
-            </div>
-            <p>i have an oil stain on my white shirt and i need it for a formal event tmrw, what do i do? please help!!!</p>
-            <div class="profile-post__footer">
-              <div class="profile-post__counts">
-                <span aria-label="589 likes">
-                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1.1L12 21l7.8-7.5 1.1-1.1a5.5 5.5 0 0 0-.1-7.8Z"></path></svg>
-                  <span class="post-like-count">589</span>
-                </span>
-                <span aria-label="15 comments">
-                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11.5a8.5 8.5 0 0 1-12.8 7.3L3 20l1.2-4A8.5 8.5 0 1 1 20 11.5Z"></path></svg>
-                  <span class="post-comment-count">15</span>
-                </span>
-              </div>
-              <button class="profile-post__comment" type="button">Comment</button>
-            </div>
-          </article>
+          <p class="profile-public-empty">No community posts from this profile yet.</p>
         </div>
       </section>
 
@@ -197,13 +176,79 @@ hop along for some cool tips lol</p>
         <input id="edit-banner-file" name="bannerFile" type="file" accept="image/*">
         <img class="profile-edit-preview profile-edit-preview--banner" id="edit-banner-preview" alt="Cover banner preview" hidden>
         <button class="profile-dialog__submit" type="submit">Save Changes</button>
+        <section class="profile-danger-zone" aria-labelledby="profile-danger-zone-title">
+          <h3 id="profile-danger-zone-title">Danger Zone</h3>
+          <p>Deleting your account permanently removes your Atelier profile and its content.</p>
+          <button class="profile-danger-zone__button" id="profile-delete-account-button" type="button" hidden>Delete Account</button>
+        </section>
       </form>
+    </dialog>
+
+    <dialog class="profile-dialog profile-delete-dialog" id="profile-delete-dialog" aria-labelledby="profile-delete-title">
+      <form class="profile-dialog__form" id="profile-delete-form">
+        <h2 id="profile-delete-title">Delete your Atelier account?</h2>
+        <p class="profile-delete-dialog__warning">This permanently removes your profile, digital closet, lookbook, marketplace listings, and posts. This action cannot be undone.</p>
+        <label for="profile-delete-confirmation">Type DELETE to confirm</label>
+        <input id="profile-delete-confirmation" name="confirmation" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" required>
+        <p class="profile-dialog__message" id="profile-delete-message" role="status" aria-live="polite" hidden></p>
+        <div class="profile-delete-dialog__actions">
+          <button class="profile-tailor-studio-dialog__cancel" id="profile-delete-cancel" type="button">Cancel</button>
+          <button class="profile-delete-dialog__submit" id="profile-delete-submit" type="submit" disabled>Permanently Delete My Account</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog class="profile-dialog profile-tailor-studio-dialog" id="profile-tailor-studio-dialog" aria-labelledby="profile-tailor-studio-dialog-title">
+      <form class="profile-dialog__form" id="profile-tailor-studio-form">
+        <button class="profile-dialog__close" type="button" data-close-dialog aria-label="Close dialog">×</button>
+        <h2 id="profile-tailor-studio-dialog-title">Edit Workshop / Studio Details</h2>
+        <label for="profile-tailor-studio-name">Studio / Brand Name</label>
+        <input id="profile-tailor-studio-name" name="name" type="text" maxlength="100" required>
+        <label for="profile-tailor-studio-location">Neighborhood / Full Address</label>
+        <input id="profile-tailor-studio-location" name="neighborhood" type="text" maxlength="200" required placeholder="e.g., Road No. 12, Banjara Hills, Hyderabad">
+        <label for="profile-tailor-studio-specialty">Specialty</label>
+        <select id="profile-tailor-studio-specialty" name="specialty" required>
+          <option value="">Choose a specialty</option>
+          <option>Alterations &amp; Denim</option>
+          <option>Bridal &amp; Embroidery</option>
+          <option>Upcycling &amp; Reworking</option>
+          <option>Custom Tailoring</option>
+          <option>Darning &amp; Invisible Mending</option>
+          <option value="custom">Custom specialty…</option>
+        </select>
+        <input id="profile-tailor-studio-custom-specialty" name="customSpecialty" type="text" maxlength="100" placeholder="Enter your specialty" aria-label="Custom specialty" hidden>
+        <label for="profile-tailor-studio-price">Price Range</label>
+        <input id="profile-tailor-studio-price" name="priceRange" type="text" maxlength="80" placeholder="₹150 – ₹1,200 or Ask for a quote">
+        <label for="profile-tailor-studio-contact">Contact Info</label>
+        <input id="profile-tailor-studio-contact" name="contactInfo" type="text" maxlength="120" placeholder="Phone / WhatsApp (+91...) or @instagram">
+        <label for="profile-tailor-studio-bio">Short Studio Bio / Services Note <span>(optional)</span></label>
+        <textarea id="profile-tailor-studio-bio" name="bio" rows="3" maxlength="400"></textarea>
+        <p class="profile-dialog__message" id="profile-tailor-studio-message" role="status" aria-live="polite" hidden></p>
+        <div class="profile-tailor-studio-dialog__actions">
+          <button class="profile-tailor-studio-dialog__cancel" type="button" data-close-dialog>Cancel</button>
+          <button class="profile-dialog__submit" type="submit">Save Studio Details</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog class="profile-dialog profile-connections-dialog" id="profile-connections-dialog" aria-labelledby="profile-connections-title">
+      <section class="profile-connections">
+        <button class="profile-dialog__close" type="button" data-close-connections aria-label="Close connections">×</button>
+        <p class="community-eyebrow">ATELIER COMMUNITY</p>
+        <h2 id="profile-connections-title">Connections</h2>
+        <div class="profile-connections__tabs" role="tablist" aria-label="Profile connections">
+          <button type="button" role="tab" data-connections-tab="followers" aria-selected="true">Followers</button>
+          <button type="button" role="tab" data-connections-tab="following" aria-selected="false">Following</button>
+        </div>
+        <p class="profile-connections__status" id="profile-connections-status" role="status" aria-live="polite"></p>
+        <div class="profile-connections__list" id="profile-connections-list"></div>
+      </section>
     </dialog>
 
     <dialog class="profile-dialog profile-thread" id="post-dialog" aria-labelledby="thread-title">
       <div class="profile-thread__content">
         <button class="profile-dialog__close" type="button" data-close-dialog aria-label="Close dialog">×</button>
-        <p class="profile-thread__author"><span id="thread-username">@sanjs4n</span><span id="thread-date"></span></p>
+        <p class="profile-thread__author"><span id="thread-username"></span><span id="thread-date"></span></p>
         <h2 id="thread-title"></h2>
         <p class="profile-thread__body" id="thread-body"></p>
         <div class="profile-thread__actions">

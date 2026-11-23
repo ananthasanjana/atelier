@@ -143,9 +143,16 @@
         const roleInput = document.getElementById('signup-role');
         const feedback = document.getElementById('signup-feedback');
         const googleButton = document.getElementById('google-signup');
+        const auth = window.atelierSupabase.getClient().auth;
         const claimParams = new URLSearchParams(window.location.search);
         const claimShopName = (claimParams.get('shop') || '').trim();
         const isTailorClaim = claimParams.get('role') === 'tailor' && Boolean(claimShopName);
+
+        auth.onAuthStateChange((event, session) => {
+          if (session && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION')) {
+            window.location.replace('profile.html');
+          }
+        });
 
         function cleanUsername(value) {
           return window.atelierSupabase.normalizeUsername(value);
@@ -217,10 +224,11 @@
           submitButton.disabled = true;
           feedback.textContent = 'Creating your Atelier account...';
           try {
-            const { data, error } = await window.atelierSupabase.getClient().auth.signUp({
+            const { data, error } = await auth.signUp({
               email: emailInput.value.trim(),
               password: passwordInput.value,
               options: {
+                emailRedirectTo: `${window.location.origin}/profile.html`,
                 data: {
                   display_name: displayName,
                   username,
@@ -231,18 +239,12 @@
             });
             if (error) throw error;
             if (!data.user) throw new Error('Supabase did not return a user after signup.');
-
-            const { data: profile, error: profileError } = await window.atelierSupabase.getClient()
-              .from('profiles')
-              .select('*')
-              .eq('id', data.user.id)
-              .single();
-            if (profileError) throw profileError;
-            profile.email = data.user.email || '';
-            window.atelierSupabase.cacheProfile(profile);
             saveClaimedShop();
-            const destination = window.atelierAuth.consumeRedirectAfterLogin('profile.html');
-            window.location.assign(destination);
+            if (data.session) {
+              window.location.replace('profile.html');
+            } else {
+              feedback.textContent = 'Account created. Check your email to confirm your account; the confirmation link will open your profile.';
+            }
           } catch (error) {
             console.error('Atelier signup failed.', error);
             feedback.textContent = `Could not complete signup: ${error.message}`;

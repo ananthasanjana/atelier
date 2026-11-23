@@ -1,47 +1,46 @@
 (() => {
   'use strict';
 
-  const CLOSET_KEY = 'atelier_closet_items';
   const SAVED_OUTFITS_KEY = 'atelier_saved_outfits';
   const LOOKBOOK_KEY = 'atelier_lookbook_entries';
   const CIRCULAR_LOOK_ENDPOINT = 'http://localhost:3000/api/circular/generate-look';
-  const PHOTO_CATEGORY_MIGRATION_KEY = 'atelier_closet_photo_categories_migrated_v2';
-  const STARTER_ITEMS = [
-    { id: 'starter-black-jacket', nickname: 'black button jacket', category: 'Tops & Shirts', fabric: 'Fabric unconfirmed', condition: 'Great', image_url: 'images/closet/closet-item-01.png', isStarter: true },
-    { id: 'starter-rust-top', nickname: 'rust floral wrap top', category: 'Tops & Shirts', fabric: 'Fabric unconfirmed', condition: 'Great', image_url: 'images/closet/closet-item-02.png', isStarter: true },
-    { id: 'starter-striped-top', nickname: 'striped sleeveless top', category: 'Tops & Shirts', fabric: 'Fabric unconfirmed', condition: 'Great', image_url: 'images/closet/closet-item-03.png', isStarter: true },
-    { id: 'starter-blue-top', nickname: 'powder blue ruffle top', category: 'Tops & Shirts', fabric: 'Fabric unconfirmed', condition: 'Great', image_url: 'images/closet/closet-item-04.png', isStarter: true },
-    { id: 'starter-espresso-top', nickname: 'espresso lace blouse', category: 'Tops & Shirts', fabric: 'Fabric unconfirmed', condition: 'Great', image_url: 'images/closet/closet-item-05.png', isStarter: true },
-    { id: 'starter-polka-cami', nickname: 'black polka dot cami', category: 'Tops & Shirts', fabric: 'Fabric unconfirmed', condition: 'Great', image_url: 'images/closet/closet-item-07.png', isStarter: true },
-    { id: 'starter-lace-cami', nickname: 'white lace cami', category: 'Tops & Shirts', fabric: 'Fabric unconfirmed', condition: 'Great', image_url: 'images/closet/closet-item-08.png', isStarter: true },
-    { id: 'starter-black-dress', nickname: 'black floral mini dress', category: 'Tops & Shirts', fabric: 'Fabric unconfirmed', condition: 'Great', image_url: 'images/closet/closet-item-06.png', isStarter: true },
-    { id: 'starter-embroidered-jeans', nickname: 'embroidered blue jeans', category: 'Bottoms', fabric: 'Denim', condition: 'Great', image_url: 'images/closet/closet-bottom-01.png', isStarter: true },
-    { id: 'starter-dark-jeans', nickname: 'dark wash jeans', category: 'Bottoms', fabric: 'Denim', condition: 'Great', image_url: 'images/closet/closet-bottom-02.png', isStarter: true },
-    { id: 'starter-denim-skirt', nickname: 'denim A-line skirt', category: 'Bottoms', fabric: 'Denim', condition: 'Great', image_url: 'images/closet/closet-bottom-03.png', isStarter: true },
-    { id: 'starter-corduroy-skirt', nickname: 'brown corduroy mini skirt', category: 'Bottoms', fabric: 'Cotton', condition: 'Great', image_url: 'images/closet/closet-bottom-04.png', isStarter: true },
-    { id: 'starter-flare-jeans', nickname: 'light wash flared jeans', category: 'Bottoms', fabric: 'Denim', condition: 'Great', image_url: 'images/closet/closet-bottom-05.png', isStarter: true },
-    { id: 'starter-polka-dot-dress', nickname: 'polka dot halter dress', category: 'Dresses', fabric: 'Fabric unconfirmed', condition: 'Great', image_url: 'images/closet/closet-dress-01.png', isStarter: true },
-    { id: 'starter-floral-ruffle-dress', nickname: 'floral ruffle dress', category: 'Dresses', fabric: 'Fabric unconfirmed', condition: 'Great', image_url: 'images/closet/closet-dress-02.png', isStarter: true },
-    { id: 'starter-plaid-slip-dress', nickname: 'brown plaid slip dress', category: 'Dresses', fabric: 'Fabric unconfirmed', condition: 'Great', image_url: 'images/closet/closet-dress-03.png', isStarter: true },
-    { id: 'starter-burgundy-striped-dress', nickname: 'burgundy striped dress', category: 'Dresses', fabric: 'Fabric unconfirmed', condition: 'Great', image_url: 'images/closet/closet-dress-04.png', isStarter: true },
-    { id: 'starter-denim-jacket', nickname: 'dark denim jacket', category: 'Outerwear', fabric: 'Fabric unconfirmed', condition: 'Great', image_url: 'images/closet/closet-outerwear-01.png', isStarter: true },
-    { id: 'starter-striped-hoodie', nickname: 'striped hooded cardigan', category: 'Outerwear', fabric: 'Fabric unconfirmed', condition: 'Great', image_url: 'images/closet/closet-outerwear-02.png', isStarter: true },
-    { id: 'starter-pink-track-jacket', nickname: 'blush track jacket', category: 'Outerwear', fabric: 'Fabric unconfirmed', condition: 'Great', image_url: 'images/closet/closet-outerwear-03.png', isStarter: true },
-    { id: 'starter-camo-hoodie', nickname: 'camo zip hoodie', category: 'Outerwear', fabric: 'Fabric unconfirmed', condition: 'Great', image_url: 'images/closet/closet-outerwear-04.png', isStarter: true },
-    { id: 'starter-charm-bracelet', nickname: 'colorful charm bracelet', category: 'Accessories', fabric: 'Fabric unconfirmed', condition: 'Great', image_url: 'images/closet/closet-accessory-01.png', isStarter: true },
-    { id: 'starter-vintage-watch', nickname: 'vintage leather watch', category: 'Accessories', fabric: 'Fabric unconfirmed', condition: 'Great', image_url: 'images/closet/closet-accessory-02.png', isStarter: true },
-    { id: 'starter-silver-hoops', nickname: 'silver hoop earrings', category: 'Accessories', fabric: 'Fabric unconfirmed', condition: 'Great', image_url: 'images/closet/closet-accessory-03.png', isStarter: true },
-    { id: 'starter-plaid-shoulder-bag', nickname: 'plaid shoulder bag', category: 'Accessories', fabric: 'Fabric unconfirmed', condition: 'Great', image_url: 'images/closet/closet-accessory-04.png', isStarter: true },
-    { id: 'starter-polka-dot-handbag', nickname: 'polka dot handbag', category: 'Accessories', fabric: 'Fabric unconfirmed', condition: 'Great', image_url: 'images/closet/closet-accessory-05.png', isStarter: true },
-    { id: 'starter-heart-pendant', nickname: 'silver heart pendant', category: 'Accessories', fabric: 'Fabric unconfirmed', condition: 'Great', image_url: 'images/closet/closet-accessory-06.png', isStarter: true },
-    { id: 'starter-star-pendant', nickname: 'pearl star pendant', category: 'Accessories', fabric: 'Fabric unconfirmed', condition: 'Great', image_url: 'images/closet/closet-accessory-07.png', isStarter: true },
-    { id: 'starter-butterfly-clips', nickname: 'butterfly hair clips', category: 'Accessories', fabric: 'Fabric unconfirmed', condition: 'Great', image_url: 'images/closet/closet-accessory-08.png', isStarter: true },
-    { id: 'starter-brown-sneakers', nickname: 'dark brown lace-up sneakers', category: 'Footwear', fabric: 'Fabric unconfirmed', condition: 'Great', image_url: 'images/closet/closet-footwear-01.png', isStarter: true },
-    { id: 'starter-gray-sneakers', nickname: 'gray suede sneakers', category: 'Footwear', fabric: 'Fabric unconfirmed', condition: 'Great', image_url: 'images/closet/closet-footwear-02.png', isStarter: true },
-    { id: 'starter-black-heels', nickname: 'black kitten heels', category: 'Footwear', fabric: 'Fabric unconfirmed', condition: 'Great', image_url: 'images/closet/closet-footwear-03.png', isStarter: true },
-    { id: 'starter-pants', nickname: 'fun pants', category: 'Bottoms', fabric: 'Denim', condition: 'Great', image_url: 'images/marketplace/item11.png', isStarter: true },
-    { id: 'starter-loafers', nickname: 'everyday loafers', category: 'Footwear', fabric: 'Leather', condition: 'Great', image_url: 'images/marketplace/item10.png', isStarter: true },
-    { id: 'starter-pouch', nickname: 'patchwork pouch', category: 'Accessories', fabric: 'Denim', condition: 'Great', image_url: 'images/marketplace/item3.png', isStarter: true }
+  const PRIVATE_STARTER_OWNER = 'sanjs4n';
+  const PRIVATE_STARTER_ITEMS = [
+    { id: 'starter-black-jacket', nickname: 'black button jacket', category: 'Tops & Shirts', fabric: 'Fabric unconfirmed', condition: 'Great', image_url: 'images/closet/closet-item-01.png' },
+    { id: 'starter-rust-top', nickname: 'rust floral wrap top', category: 'Tops & Shirts', fabric: 'Fabric unconfirmed', condition: 'Great', image_url: 'images/closet/closet-item-02.png' },
+    { id: 'starter-striped-top', nickname: 'striped sleeveless top', category: 'Tops & Shirts', fabric: 'Fabric unconfirmed', condition: 'Great', image_url: 'images/closet/closet-item-03.png' },
+    { id: 'starter-blue-top', nickname: 'powder blue ruffle top', category: 'Tops & Shirts', fabric: 'Fabric unconfirmed', condition: 'Great', image_url: 'images/closet/closet-item-04.png' },
+    { id: 'starter-espresso-top', nickname: 'espresso lace blouse', category: 'Tops & Shirts', fabric: 'Fabric unconfirmed', condition: 'Great', image_url: 'images/closet/closet-item-05.png' },
+    { id: 'starter-polka-cami', nickname: 'black polka dot cami', category: 'Tops & Shirts', fabric: 'Fabric unconfirmed', condition: 'Great', image_url: 'images/closet/closet-item-07.png' },
+    { id: 'starter-lace-cami', nickname: 'white lace cami', category: 'Tops & Shirts', fabric: 'Fabric unconfirmed', condition: 'Great', image_url: 'images/closet/closet-item-08.png' },
+    { id: 'starter-black-dress', nickname: 'black floral mini dress', category: 'Dresses', fabric: 'Fabric unconfirmed', condition: 'Great', image_url: 'images/closet/closet-item-06.png' },
+    { id: 'starter-embroidered-jeans', nickname: 'embroidered blue jeans', category: 'Bottoms', fabric: 'Denim', condition: 'Great', image_url: 'images/closet/closet-bottom-01.png' },
+    { id: 'starter-dark-jeans', nickname: 'dark wash jeans', category: 'Bottoms', fabric: 'Denim', condition: 'Great', image_url: 'images/closet/closet-bottom-02.png' },
+    { id: 'starter-denim-skirt', nickname: 'denim A-line skirt', category: 'Bottoms', fabric: 'Denim', condition: 'Great', image_url: 'images/closet/closet-bottom-03.png' },
+    { id: 'starter-corduroy-skirt', nickname: 'brown corduroy mini skirt', category: 'Bottoms', fabric: 'Cotton', condition: 'Great', image_url: 'images/closet/closet-bottom-04.png' },
+    { id: 'starter-flare-jeans', nickname: 'light wash flared jeans', category: 'Bottoms', fabric: 'Denim', condition: 'Great', image_url: 'images/closet/closet-bottom-05.png' },
+    { id: 'starter-polka-dot-dress', nickname: 'polka dot halter dress', category: 'Dresses', fabric: 'Fabric unconfirmed', condition: 'Great', image_url: 'images/closet/closet-dress-01.png' },
+    { id: 'starter-floral-ruffle-dress', nickname: 'floral ruffle dress', category: 'Dresses', fabric: 'Fabric unconfirmed', condition: 'Great', image_url: 'images/closet/closet-dress-02.png' },
+    { id: 'starter-plaid-slip-dress', nickname: 'brown plaid slip dress', category: 'Dresses', fabric: 'Fabric unconfirmed', condition: 'Great', image_url: 'images/closet/closet-dress-03.png' },
+    { id: 'starter-burgundy-striped-dress', nickname: 'burgundy striped dress', category: 'Dresses', fabric: 'Fabric unconfirmed', condition: 'Great', image_url: 'images/closet/closet-dress-04.png' },
+    { id: 'starter-denim-jacket', nickname: 'dark denim jacket', category: 'Outerwear', fabric: 'Fabric unconfirmed', condition: 'Great', image_url: 'images/closet/closet-outerwear-01.png' },
+    { id: 'starter-striped-hoodie', nickname: 'striped hooded cardigan', category: 'Outerwear', fabric: 'Fabric unconfirmed', condition: 'Great', image_url: 'images/closet/closet-outerwear-02.png' },
+    { id: 'starter-pink-track-jacket', nickname: 'blush track jacket', category: 'Outerwear', fabric: 'Fabric unconfirmed', condition: 'Great', image_url: 'images/closet/closet-outerwear-03.png' },
+    { id: 'starter-camo-hoodie', nickname: 'camo zip hoodie', category: 'Outerwear', fabric: 'Fabric unconfirmed', condition: 'Great', image_url: 'images/closet/closet-outerwear-04.png' },
+    { id: 'starter-charm-bracelet', nickname: 'colorful charm bracelet', category: 'Accessories', fabric: 'Fabric unconfirmed', condition: 'Great', image_url: 'images/closet/closet-accessory-01.png' },
+    { id: 'starter-vintage-watch', nickname: 'vintage leather watch', category: 'Accessories', fabric: 'Fabric unconfirmed', condition: 'Great', image_url: 'images/closet/closet-accessory-02.png' },
+    { id: 'starter-silver-hoops', nickname: 'silver hoop earrings', category: 'Accessories', fabric: 'Fabric unconfirmed', condition: 'Great', image_url: 'images/closet/closet-accessory-03.png' },
+    { id: 'starter-plaid-shoulder-bag', nickname: 'plaid shoulder bag', category: 'Accessories', fabric: 'Fabric unconfirmed', condition: 'Great', image_url: 'images/closet/closet-accessory-04.png' },
+    { id: 'starter-polka-dot-handbag', nickname: 'polka dot handbag', category: 'Accessories', fabric: 'Fabric unconfirmed', condition: 'Great', image_url: 'images/closet/closet-accessory-05.png' },
+    { id: 'starter-heart-pendant', nickname: 'silver heart pendant', category: 'Accessories', fabric: 'Fabric unconfirmed', condition: 'Great', image_url: 'images/closet/closet-accessory-06.png' },
+    { id: 'starter-star-pendant', nickname: 'pearl star pendant', category: 'Accessories', fabric: 'Fabric unconfirmed', condition: 'Great', image_url: 'images/closet/closet-accessory-07.png' },
+    { id: 'starter-butterfly-clips', nickname: 'butterfly hair clips', category: 'Accessories', fabric: 'Fabric unconfirmed', condition: 'Great', image_url: 'images/closet/closet-accessory-08.png' },
+    { id: 'starter-brown-sneakers', nickname: 'dark brown lace-up sneakers', category: 'Footwear', fabric: 'Fabric unconfirmed', condition: 'Great', image_url: 'images/closet/closet-footwear-01.png' },
+    { id: 'starter-gray-sneakers', nickname: 'gray suede sneakers', category: 'Footwear', fabric: 'Fabric unconfirmed', condition: 'Great', image_url: 'images/closet/closet-footwear-02.png' },
+    { id: 'starter-black-heels', nickname: 'black kitten heels', category: 'Footwear', fabric: 'Fabric unconfirmed', condition: 'Great', image_url: 'images/closet/closet-footwear-03.png' },
+    { id: 'starter-pants', nickname: 'fun pants', category: 'Bottoms', fabric: 'Denim', condition: 'Great', image_url: 'images/marketplace/item11.png' },
+    { id: 'starter-loafers', nickname: 'everyday loafers', category: 'Footwear', fabric: 'Leather', condition: 'Great', image_url: 'images/marketplace/item10.png' },
+    { id: 'starter-pouch', nickname: 'patchwork pouch', category: 'Accessories', fabric: 'Denim', condition: 'Great', image_url: 'images/marketplace/item3.png' }
   ];
   const FABRIC_GUIDES = {
     Denim: 'Wash cold and inside-out with a mild detergent. Skip fabric softener; line dry in the shade and avoid the tumble dryer to protect the color and shape.',
@@ -165,6 +164,19 @@
       console.error(`Unable to save ${key} to local storage.`, error);
       return false;
     }
+  }
+
+  function closetStorageKey() {
+    return state.user && state.user.id
+      ? `atelier_closet_${state.user.id}`
+      : '';
+  }
+
+  function writeClosetItems(items) {
+    const userId = state.user && String(state.user.id);
+    const storageKey = closetStorageKey();
+    if (!userId || !storageKey) return false;
+    return writeArray(storageKey, items.filter((item) => item && String(item.user_id) === userId));
   }
 
   function normalizeCategory(value) {
@@ -591,41 +603,20 @@
       fabric: normalizeFabric(row.fabric),
       condition: String(row.condition || 'Great'),
       updated_at: row.updated_at || row.created_at || '',
-      image_url: String(row.image_url || row.photo_url || row.image || ''),
-      isStarter: false
+      image_url: String(row.image_url || row.photo_url || row.image || '')
     };
   }
 
   function storedItems() {
-    return readArray(CLOSET_KEY).filter((item) => item && typeof item === 'object' && !Array.isArray(item));
-  }
-
-  function migrateSuppliedPhotoCategories(items) {
-    try {
-      if (window.localStorage.getItem(PHOTO_CATEGORY_MIGRATION_KEY) === 'true') return items;
-    } catch (error) {
-      console.error('Unable to check the closet photo category migration.', error);
-    }
-
-    const suppliedPhotoStarters = STARTER_ITEMS.filter((item) => item.image_url.startsWith('images/closet/'));
-    const suppliedPhotoCategories = new Map(suppliedPhotoStarters.map((item) => [item.image_url, item.category]));
-    let changed = false;
-    const migratedItems = items.map((item) => {
-      const category = suppliedPhotoCategories.get(item.image_url);
-      if (!category || item.category === category) return item;
-      changed = true;
-      return { ...item, category };
-    });
-
-    const migratedWithSuppliedPhotos = mergeItems(migratedItems, suppliedPhotoStarters);
-    if ((changed || migratedWithSuppliedPhotos.length !== migratedItems.length)
-      && !writeArray(CLOSET_KEY, migratedWithSuppliedPhotos)) return migratedWithSuppliedPhotos;
-    try {
-      window.localStorage.setItem(PHOTO_CATEGORY_MIGRATION_KEY, 'true');
-    } catch (error) {
-      console.error('Unable to save the closet photo category migration state.', error);
-    }
-    return migratedWithSuppliedPhotos;
+    const storageKey = closetStorageKey();
+    const userId = state.user && String(state.user.id);
+    if (!storageKey || !userId) return [];
+    return readArray(storageKey).filter((item) => (
+      item
+      && typeof item === 'object'
+      && !Array.isArray(item)
+      && String(item.user_id) === userId
+    ));
   }
 
   function mergeItems(localItems, remoteItems) {
@@ -643,8 +634,117 @@
     return [...merged.values()];
   }
 
+  function closetItemSignature(item) {
+    return `${String(item.nickname || '').trim().toLowerCase()}::${String(item.image_url || '').trim().toLowerCase()}`;
+  }
+
+  function markPrivateStarterRestoreComplete(userId) {
+    try {
+      window.localStorage.setItem(`atelier_closet_${userId}_starter_restore_complete`, 'true');
+    } catch (error) {
+      console.error('Could not remember the private closet restore state.', error);
+    }
+  }
+
+  async function restorePrivateStarterItems(localItems, remoteItems) {
+    const userId = state.user && String(state.user.id);
+    if (!userId || normalizeUsername(state.username) !== PRIVATE_STARTER_OWNER) {
+      return { localItems, remoteItems };
+    }
+
+    const remoteSignatures = new Set(remoteItems.map(closetItemSignature));
+    const alreadySyncedLocal = localItems.filter((item) => (
+      item.local_pending && remoteSignatures.has(closetItemSignature(item))
+    ));
+    if (alreadySyncedLocal.length) {
+      const syncedSignatures = new Set(alreadySyncedLocal.map(closetItemSignature));
+      localItems = localItems.filter((item) => !(
+        item.local_pending && syncedSignatures.has(closetItemSignature(item))
+      ));
+      localItems = mergeItems(
+        localItems,
+        remoteItems.filter((item) => syncedSignatures.has(closetItemSignature(item)))
+      );
+      if (!writeClosetItems(localItems)) {
+        setStorageStatus('Your cloud closet is restored, but its local cache could not be updated.', 'warning');
+      }
+    }
+
+    try {
+      if (window.localStorage.getItem(`atelier_closet_${userId}_starter_restore_complete`) === 'true') {
+        return { localItems, remoteItems };
+      }
+    } catch (error) {
+      console.error('Could not check the private closet restore state.', error);
+    }
+
+    const localSignatures = new Set(localItems.map(closetItemSignature));
+    const localPendingSignatures = new Set(
+      localItems.filter((item) => item.local_pending).map(closetItemSignature)
+    );
+    const itemsToRestore = PRIVATE_STARTER_ITEMS.filter((item) => {
+      const signature = closetItemSignature(item);
+      return !remoteSignatures.has(signature)
+        && (!localSignatures.has(signature) || localPendingSignatures.has(signature));
+    });
+
+    if (!itemsToRestore.length) {
+      markPrivateStarterRestoreComplete(userId);
+      return { localItems, remoteItems };
+    }
+
+    try {
+      const { data, error } = await window.atelierSupabase.getClient()
+        .from('closet_items')
+        .insert(itemsToRestore.map((item) => ({
+          user_id: userId,
+          nickname: item.nickname,
+          category: item.category,
+          fabric: item.fabric,
+          condition: item.condition,
+          image_url: item.image_url
+        })))
+        .select('*');
+      if (error) throw error;
+      if (!Array.isArray(data) || data.length !== itemsToRestore.length) {
+        throw new Error('The restored garments were not all confirmed by the closet service.');
+      }
+
+      const restoredRows = data.map(mapClosetRow);
+      const restoredSignatures = new Set(restoredRows.map(closetItemSignature));
+      localItems = localItems.filter((item) => !(
+        item.local_pending && restoredSignatures.has(closetItemSignature(item))
+      ));
+      localItems = mergeItems(localItems, restoredRows);
+      remoteItems = mergeItems(remoteItems, restoredRows);
+      if (!writeClosetItems(localItems)) {
+        setStorageStatus('Your previous garments are restored to your account, but this device could not cache them.', 'warning');
+      } else {
+        setStorageStatus(`Restored ${restoredRows.length} previous pieces to your private closet.`, 'success');
+      }
+      markPrivateStarterRestoreComplete(userId);
+      return { localItems, remoteItems };
+    } catch (error) {
+      console.error('The previous garments could not be restored to the cloud closet.', error);
+      const localRestoredItems = itemsToRestore.map((item) => ({
+        ...item,
+        id: `private-${item.id}`,
+        user_id: userId,
+        local_pending: true,
+        local_pending_at: new Date().toISOString()
+      }));
+      localItems = mergeItems(localItems, localRestoredItems);
+      if (writeClosetItems(localItems)) {
+        setStorageStatus('Your previous garments are saved privately on this device; cloud sync will retry when available.', 'warning');
+      } else {
+        setStorageStatus('Your previous garments could not be saved. Check browser storage and try again.', 'warning');
+      }
+      return { localItems, remoteItems };
+    }
+  }
+
   async function loadClosetItems() {
-    const localItems = migrateSuppliedPhotoCategories(storedItems());
+    let localItems = storedItems();
     let remoteItems = [];
     if (state.user && window.atelierSupabase) {
       try {
@@ -661,27 +761,23 @@
       }
     }
 
-    const customItems = mergeItems(localItems, remoteItems);
-    const removedStarters = new Set(readArray('atelier_closet_removed_starters').map(String));
-    const suppliedPhotoStarters = STARTER_ITEMS.filter((item) => item.image_url.startsWith('images/closet/'));
-    if (!customItems.length) {
-      state.items = STARTER_ITEMS.map((item) => ({ ...item }));
-      if (!elements.storageStatus.textContent) {
-        setStorageStatus('A few starter favorites are here to help you get started.', 'info');
-      }
-    } else {
-      state.items = mergeItems(customItems, suppliedPhotoStarters);
-      if (!elements.storageStatus.textContent) {
-        setStorageStatus(remoteItems.length ? 'Your closet is synced with your Atelier account.' : 'Showing your saved closet from this device.', 'info');
-      }
-    }
+    const restored = await restorePrivateStarterItems(localItems, remoteItems);
+    localItems = restored.localItems;
+    remoteItems = restored.remoteItems;
 
-    state.items = state.items.filter((item) => !item.isStarter || !removedStarters.has(String(item.id)));
-    state.items = state.items.map((item) => ({
-      ...item,
-      category: normalizeCategory(item.category),
-      fabric: normalizeFabric(item.fabric)
-    }));
+    state.items = mergeItems(localItems, remoteItems)
+      .filter((item) => String(item.user_id) === String(state.user.id))
+      .map((item) => ({
+        ...item,
+        category: normalizeCategory(item.category),
+        fabric: normalizeFabric(item.fabric)
+      }));
+
+    if (!elements.storageStatus.textContent && remoteItems.length) {
+      setStorageStatus('Your closet is synced with your Atelier account.', 'info');
+    } else if (!elements.storageStatus.textContent && localItems.length) {
+      setStorageStatus('Showing your saved closet from this device.', 'info');
+    }
 
     state.category = 'All';
     state.chatItemId = '';
@@ -709,7 +805,9 @@
     if (!items.length) {
       const empty = document.createElement('p');
       empty.className = 'closet-empty';
-      empty.textContent = `No ${state.category.toLowerCase()} in your closet yet. Add a piece to start this collection.`;
+      empty.textContent = state.items.length
+        ? `No ${state.category.toLowerCase()} in your closet yet. Add a piece to start this collection.`
+        : 'Your closet is empty — click + Add Piece to upload your first garment!';
       elements.grid.append(empty);
       return;
     }
@@ -768,13 +866,9 @@
   async function removeItem(item) {
     const nextItems = state.items.filter((candidate) => String(candidate.id) !== String(item.id));
     const localItems = storedItems().filter((candidate) => String(candidate.id) !== String(item.id));
-    const localSaved = writeArray(CLOSET_KEY, localItems);
-    let starterRemovalSaved = true;
-    if (item.isStarter) {
-      const removed = new Set(readArray('atelier_closet_removed_starters').map(String));
-      removed.add(String(item.id));
-      starterRemovalSaved = writeArray('atelier_closet_removed_starters', [...removed]);
-    } else if (item.id && state.user && window.atelierSupabase) {
+    const localSaved = writeClosetItems(localItems);
+    let remoteDeleteError = null;
+    if (item.id && state.user && window.atelierSupabase) {
       try {
         const { error } = await window.atelierSupabase.getClient()
           .from('closet_items')
@@ -784,17 +878,17 @@
         if (error) throw error;
       } catch (error) {
         console.error('Unable to delete the closet item from Supabase.', error);
-        setStorageStatus(`Removed this piece here, but cloud deletion failed: ${error.message}`, 'warning');
+        remoteDeleteError = error;
       }
     }
 
-    state.items = nextItems.length ? nextItems : STARTER_ITEMS.map((starter) => ({ ...starter }));
-    if (!nextItems.length) {
-      setStorageStatus('Your closet is empty, so starter pieces are back to help you try the stylist.', 'info');
-    } else if (!localSaved) {
+    state.items = nextItems;
+    if (!localSaved) {
       setStorageStatus('This item was removed from the view, but local storage could not be updated.', 'warning');
-    } else if (!starterRemovalSaved) {
-      setStorageStatus('This starter piece was removed for now, but browser storage could not remember the change.', 'warning');
+    } else if (remoteDeleteError) {
+      setStorageStatus(`Removed this piece here, but cloud deletion failed: ${remoteDeleteError.message}`, 'warning');
+    } else if (!nextItems.length) {
+      setStorageStatus('Your closet is empty. Add a piece whenever you’re ready.', 'info');
     }
     state.items = state.items.map((entry) => ({
       ...entry,
@@ -944,12 +1038,11 @@
       category: normalizeCategory(elements.category.value),
       fabric: normalizeFabric(elements.fabricInput.value),
       condition: elements.conditionInput.value,
-      image_url: imageUrl,
-      isStarter: false
+      image_url: imageUrl
     };
-    let savedRemotely = Boolean(item.isStarter);
+    let savedRemotely = false;
     let remoteError = null;
-    if (!item.isStarter && state.user && window.atelierSupabase) {
+    if (state.user && window.atelierSupabase) {
       try {
         const { data, error } = await window.atelierSupabase.getClient()
           .from('closet_items')
@@ -973,7 +1066,7 @@
       }
     }
 
-    if (!savedRemotely && !item.isStarter) {
+    if (!savedRemotely) {
       updatedItem.local_pending = true;
       updatedItem.local_pending_at = new Date().toISOString();
     } else {
@@ -984,8 +1077,7 @@
     const updatedItems = state.items.map((entry) => (
       String(entry.id) === String(item.id) ? updatedItem : entry
     ));
-    const cachedItems = updatedItems.filter((entry) => !entry.isStarter);
-    const savedLocally = writeArray(CLOSET_KEY, cachedItems);
+    const savedLocally = writeClosetItems(updatedItems);
     if (!savedRemotely && !savedLocally) {
       elements.uploadStatus.textContent = `Could not save your changes. ${remoteError ? remoteError.message : 'Browser storage is unavailable.'}`;
       return false;
@@ -1004,7 +1096,7 @@
 
     const warnings = [];
     if (remoteError) warnings.push(`Supabase update failed: ${remoteError.message}`);
-    else if (!savedRemotely && !item.isStarter) warnings.push('Cloud closet is unavailable; changes were saved only on this device.');
+    else if (!savedRemotely) warnings.push('Cloud closet is unavailable; changes were saved only on this device.');
     if (!savedLocally) warnings.push('Browser storage could not cache the changes.');
     if (cloudinaryError) warnings.push(`Cloudinary upload failed: ${cloudinaryError.message}; the photo is stored locally.`);
     setStorageStatus(
@@ -1551,8 +1643,7 @@
         fabric: normalizeFabric(elements.fabricInput.value),
         condition: elements.conditionInput.value,
         image_url: imageUrl,
-        created_at: new Date().toISOString(),
-        isStarter: false
+        created_at: new Date().toISOString()
       };
       let savedRemotely = false;
       let remoteError = null;
@@ -1571,6 +1662,7 @@
           .single();
         if (error) throw error;
         Object.assign(newItem, mapClosetRow(data));
+        newItem.user_id = String(state.user.id);
         savedRemotely = true;
       } catch (error) {
         remoteError = error;
@@ -1579,7 +1671,7 @@
 
       const localItems = storedItems().filter((item) => String(item.id) !== String(newItem.id));
       localItems.unshift(newItem);
-      const savedLocally = writeArray(CLOSET_KEY, localItems);
+      const savedLocally = writeClosetItems(localItems);
       if (!savedLocally && !savedRemotely) {
         elements.uploadStatus.textContent = `Could not save your closet item locally or online. ${remoteError ? remoteError.message : ''}`;
         elements.uploadButton.disabled = false;
@@ -1587,8 +1679,7 @@
         return;
       }
 
-      state.items = mergeItems([...state.items.filter((item) => !item.isStarter), ...storedItems()], [newItem]);
-      state.items = state.items.filter((item) => !item.isStarter);
+      state.items = mergeItems([...state.items, ...storedItems()], [newItem]);
       state.category = 'All';
       state.chatItemId = newItem.id;
       updateCategory('All');
