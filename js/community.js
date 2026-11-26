@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-  const SEED_POSTS = window.ATELIER_COMMUNITY_POSTS || [];
+  const DEMO_POSTS = window.ATELIER_COMMUNITY_POSTS || [];
   const SUGGESTIONS = window.ATELIER_COMMUNITY_MAKERS || [];
   const FORUM_TOPICS = ['Mending Tips', 'Thrift Hauls', 'Upcycling', 'Fabric Care'];
   const FORUM_SEEDS = [
@@ -920,12 +920,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function mergePosts(remotePosts) {
     const byId = new Map();
-    const fallbackPosts = remotePosts.length ? [] : (localPosts.length ? localPosts : SEED_POSTS);
-    fallbackPosts.forEach((post) => byId.set(String(post.id), post));
-    remotePosts.forEach((post) => byId.set(post.id, post));
-    return [...byId.values()].filter((post) => !deletedIds.has(String(post.id))).sort((first, second) => {
-      return new Date(second.createdAt || 0).getTime() - new Date(first.createdAt || 0).getTime();
+    const livePosts = [...remotePosts].sort((first, second) => (
+      new Date(second.createdAt || 0).getTime() - new Date(first.createdAt || 0).getTime()
+    ));
+    const mergedPosts = [];
+    const demoPosts = activeTab === 'home'
+      ? DEMO_POSTS.map((post) => ({ ...post, isDemo: true }))
+      : [];
+    [...livePosts, ...localPosts, ...demoPosts].forEach((post) => {
+      const id = String(post.id);
+      if (byId.has(id)) return;
+      byId.set(id, true);
+      mergedPosts.push(post);
     });
+    return mergedPosts.filter((post) => !deletedIds.has(String(post.id)));
   }
 
   function matchesTab(post) {
@@ -936,12 +944,9 @@ document.addEventListener('DOMContentLoaded', () => {
       return savedIds.has(post.id);
     }
     if (activeTab === 'my-posts') {
-      const authorIds = [post.authorId, post.userId, post.author_id, post.user_id]
-        .filter(Boolean)
-        .map(String);
-      const postUsername = post.authorUsername || post.author_username || post.handle;
-      return (currentUserId && authorIds.includes(currentUserId))
-        || (ownHandle && normalizeHandle(postUsername) === normalizeHandle(ownHandle));
+      return !post.isDemo
+        && Boolean(currentUserId)
+        && String(post.author_id || '') === currentUserId;
     }
     if (activeTab === 'home') {
       return true;
@@ -1014,7 +1019,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function getFallbackAuthorRows() {
-    const posts = localPosts.length ? localPosts : SEED_POSTS;
+    const posts = [...localPosts, ...DEMO_POSTS];
     return posts.flatMap((post) => [
       {
         user_id: post.userId || post.user_id || '',
@@ -1047,6 +1052,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const authorProfile = findAuthorProfile(userId, handle);
         return {
           id: String(row.id),
+          author_id: String(row.author_id || row.user_id || ''),
           authorId: String(row.author_id || ''),
           userId,
           authorUsername: row.author_username || row.author_handle || row.username || handle,
@@ -1337,6 +1343,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const post = {
         id: String(data.id),
+        author_id: String(data.author_id || data.user_id || user.id),
         authorId: String(data.author_id || user.id),
         userId: data.user_id || user.id,
         authorUsername: data.author_username || data.author_handle || ownHandle,
