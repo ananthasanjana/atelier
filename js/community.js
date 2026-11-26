@@ -70,7 +70,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let memberSearchTimer = 0;
   let memberSearchRequest = 0;
   let supabaseClient = null;
-  let currentUserId = '';
+  let currentUserId = profile ? String(profile.id || '') : '';
   const profileIdsByHandle = new Map();
   const authorProfilesById = new Map();
   const authorProfilesByHandle = new Map();
@@ -936,10 +936,15 @@ document.addEventListener('DOMContentLoaded', () => {
       return savedIds.has(post.id);
     }
     if (activeTab === 'my-posts') {
-      return normalizeHandle(post.handle) === ownHandle;
+      const authorIds = [post.authorId, post.userId, post.author_id, post.user_id]
+        .filter(Boolean)
+        .map(String);
+      const postUsername = post.authorUsername || post.author_username || post.handle;
+      return (currentUserId && authorIds.includes(currentUserId))
+        || (ownHandle && normalizeHandle(postUsername) === normalizeHandle(ownHandle));
     }
     if (activeTab === 'home') {
-      return !post.forumTopic;
+      return true;
     }
     return true;
   }
@@ -1030,8 +1035,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const { data, error } = await supabaseClient
         .from('community_posts')
         .select('*')
-        .order('created_at', { ascending: false })
-        .limit(40);
+        .order('created_at', { ascending: false });
       if (error) {
         throw error;
       }
@@ -1043,7 +1047,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const authorProfile = findAuthorProfile(userId, handle);
         return {
           id: String(row.id),
+          authorId: String(row.author_id || ''),
           userId,
+          authorUsername: row.author_username || row.author_handle || row.username || handle,
           author: row.author_name || (authorProfile && authorProfile.name) || 'Atelier member',
           handle,
           avatar: resolveAuthorAvatar(userId, handle),
@@ -1331,7 +1337,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const post = {
         id: String(data.id),
+        authorId: String(data.author_id || user.id),
         userId: data.user_id || user.id,
+        authorUsername: data.author_username || data.author_handle || ownHandle,
         author: data.author_name || profile.name,
         handle: normalizeHandle(data.author_handle || ownHandle),
         avatar: resolveAuthorAvatar(user.id, ownHandle),
