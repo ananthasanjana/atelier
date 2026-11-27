@@ -1357,7 +1357,7 @@
         if (elements.generateOutfit.disabled) {
           state.generationId += 1;
           elements.generateOutfit.disabled = false;
-          elements.generateOutfit.innerHTML = 'Generate New Look! <span aria-hidden="true">✨</span>';
+          elements.generateOutfit.textContent = 'Generate New Look!';
         }
         renderOutfit(state.currentOutfit, state.currentNote);
       });
@@ -1446,13 +1446,13 @@
         : 'Add a top and a bottom, or a dress, to start making outfit combinations.';
       updateSaveOutfitButton();
       elements.generateOutfit.disabled = false;
-      elements.generateOutfit.innerHTML = 'Generate New Look! <span aria-hidden="true">✨</span>';
+      elements.generateOutfit.textContent = 'Generate New Look!';
       return;
     }
 
     elements.generateOutfit.disabled = true;
     elements.saveOutfit.disabled = true;
-    elements.generateOutfit.textContent = 'Generating AI Look... ✨';
+    elements.generateOutfit.textContent = 'Generating AI Look...';
     let chosen = null;
     try {
       chosen = await requestAIOutfit(candidates, generationId);
@@ -1475,7 +1475,7 @@
       renderOutfit(chosen.outfit, note);
     }
     elements.generateOutfit.disabled = false;
-    elements.generateOutfit.innerHTML = 'Generate New Look! <span aria-hidden="true">✨</span>';
+    elements.generateOutfit.textContent = 'Generate New Look!';
     updateSaveOutfitButton();
   }
 

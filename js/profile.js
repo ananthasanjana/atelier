@@ -977,6 +977,10 @@ document.addEventListener('DOMContentLoaded', () => {
     article.tabIndex = 0;
     article.setAttribute('role', 'link');
     article.setAttribute('aria-label', `Open ${post.title || `post from ${post.author}`} in Community`);
+    article.style.cursor = 'pointer';
+    article.onclick = () => {
+      window.location.assign(`community.html?post=${encodeURIComponent(String(post.id))}`);
+    };
     const titleRow = document.createElement('div');
     titleRow.className = 'profile-post__title-row';
     const title = document.createElement('h3');
@@ -1727,12 +1731,6 @@ document.addEventListener('DOMContentLoaded', () => {
     elements.threadDialog.showModal();
   }
 
-  elements.postList.addEventListener('click', (event) => {
-    const card = event.target.closest('.profile-post');
-    if (card) {
-      window.location.assign(`community.html?post=${encodeURIComponent(card.dataset.postId)}`);
-    }
-  });
   elements.postList.addEventListener('keydown', (event) => {
     const card = event.target.closest('.profile-post');
     if (card && event.target === card && (event.key === 'Enter' || event.key === ' ')) {

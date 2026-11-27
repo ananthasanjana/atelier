@@ -2286,6 +2286,12 @@ button {
 
 .profile-post__footer--public {
   justify-content: flex-start;
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(107, 102, 56, 0.15);
+  display: flex;
+  align-items: center;
+  gap: 18px;
 }
 
 .profile-public-empty {
@@ -5144,6 +5150,35 @@ button {
   text-align: center;
 }
 
+.community-profile-card__identity {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.community-profile-card__identity .community-avatar--profile {
+  transition: opacity 150ms ease, transform 150ms ease;
+}
+
+.community-profile-card__identity:hover .community-avatar--profile {
+  opacity: 0.88;
+  transform: scale(1.04);
+}
+
+.community-profile-card__identity:hover h1 {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.community-profile-card__identity:focus-visible {
+  border-radius: 12px;
+  outline: 2px solid #6b6638;
+  outline-offset: 4px;
+}
+
 .community-avatar {
   display: inline-grid;
   width: 52px;
@@ -5186,7 +5221,8 @@ button {
   font-weight: 600;
 }
 
-.community-profile-summary > p:not(.community-profile-stats) {
+.community-profile-summary > p:not(.community-profile-stats),
+.community-profile-card__identity p {
   margin: 1px 0 0;
   color: #6d6853;
   font-size: 13px;
@@ -5378,7 +5414,7 @@ button {
 .community-post {
   min-width: 0;
   padding: 17px 18px 15px;
-  transition: transform 170ms ease, box-shadow 170ms ease;
+  transition: transform 170ms ease, box-shadow 0.4s ease;
 }
 
 .community-post.is-new {
@@ -5386,9 +5422,8 @@ button {
 }
 
 .community-post.is-deep-linked {
-  outline: 3px solid #d6b87b;
-  outline-offset: 4px;
-  box-shadow: 0 8px 22px rgb(107 102 56 / 18%);
+  box-shadow: 0 0 0 3px #c8d389;
+  transition: box-shadow 0.4s ease;
 }
 
 @keyframes community-pop {
@@ -6362,27 +6397,36 @@ button {
 
   .community-profile-summary {
     display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr);
     align-items: center;
     gap: 3px 12px;
+    justify-items: center;
+  }
+
+  .community-profile-card__identity {
+    grid-column: 1 / -1;
   }
 
   .community-avatar--profile {
-    grid-column: 1;
-    grid-row: 1 / 6;
     width: 62px;
     height: 62px;
     margin: 0;
   }
 
-  .community-profile-summary h1,
+  .community-profile-card__identity h1 {
+    align-self: center;
+  }
+
+  .community-profile-card__identity p {
+    align-self: center;
+  }
+
   .community-profile-summary > p,
   .community-profile-summary .community-role-pill {
-    grid-column: 2;
+    grid-column: 1 / -1;
   }
 
   .community-profile-summary h1 {
-    align-self: end;
     font-size: 20px;
   }
 

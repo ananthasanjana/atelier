@@ -492,8 +492,8 @@ document.addEventListener('DOMContentLoaded', () => {
   function createPostCard(post) {
     const article = document.createElement('article');
     article.className = 'community-post';
-    article.dataset.postId = post.id;
-    article.id = `post-${post.id}`;
+    article.dataset.postId = String(post.id);
+    article.id = `post-${String(post.id)}`;
 
     const head = document.createElement('header');
     head.className = 'community-post__head';
@@ -1025,12 +1025,11 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function showDeepLinkedPost() {
-    const queryPostId = new URLSearchParams(window.location.search).get('post');
     const hashPostId = window.location.hash.startsWith('#post-')
       ? window.location.hash.slice('#post-'.length)
       : '';
-    const postId = queryPostId || hashPostId;
-    if (!postId) return;
+    const targetId = new URLSearchParams(window.location.search).get('post') || hashPostId;
+    if (!targetId) return;
 
     activeTab = 'home';
     activeFilter = 'recent';
@@ -1049,15 +1048,16 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     renderFeed();
 
-    const postCard = document.getElementById(`post-${postId}`);
-    if (!postCard) return;
+    const el = Array.from(elements.feed.querySelectorAll('[data-post-id]'))
+      .find((postCard) => postCard.dataset.postId === targetId);
+    if (!el) return;
     window.requestAnimationFrame(() => {
-      postCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      postCard.classList.add('is-deep-linked');
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.classList.add('is-deep-linked');
       window.clearTimeout(deepLinkHighlightTimer);
       deepLinkHighlightTimer = window.setTimeout(() => {
-        postCard.classList.remove('is-deep-linked');
-      }, 2600);
+        el.classList.remove('is-deep-linked');
+      }, 2500);
     });
   }
 
