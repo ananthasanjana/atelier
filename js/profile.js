@@ -973,6 +973,10 @@ document.addEventListener('DOMContentLoaded', () => {
   function createPublicPostCard(post) {
     const article = document.createElement('article');
     article.className = 'profile-post profile-post--public';
+    article.dataset.postId = String(post.id);
+    article.tabIndex = 0;
+    article.setAttribute('role', 'link');
+    article.setAttribute('aria-label', `Open ${post.title || `post from ${post.author}`} in Community`);
     const titleRow = document.createElement('div');
     titleRow.className = 'profile-post__title-row';
     const title = document.createElement('h3');
@@ -1029,9 +1033,33 @@ document.addEventListener('DOMContentLoaded', () => {
     const counts = document.createElement('div');
     counts.className = 'profile-post__counts';
     const likes = document.createElement('span');
-    likes.textContent = `♡ ${Number(post.likes || 0)} likes`;
+    const likeIcon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    likeIcon.setAttribute('viewBox', '0 0 24 24');
+    likeIcon.setAttribute('width', '15');
+    likeIcon.setAttribute('height', '15');
+    likeIcon.setAttribute('fill', 'none');
+    likeIcon.setAttribute('stroke', 'currentColor');
+    likeIcon.setAttribute('stroke-width', '1.75');
+    likeIcon.setAttribute('style', 'vertical-align: middle');
+    likeIcon.setAttribute('aria-hidden', 'true');
+    const likePath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    likePath.setAttribute('d', 'M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1.1L12 21l7.8-7.5 1.1-1.1a5.5 5.5 0 0 0-.1-7.8Z');
+    likeIcon.append(likePath);
+    likes.append(likeIcon, document.createTextNode(`${Number(post.likes || 0)} likes`));
     const comments = document.createElement('span');
-    comments.textContent = `◯ ${post.comments.length} comments`;
+    const commentIcon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    commentIcon.setAttribute('viewBox', '0 0 24 24');
+    commentIcon.setAttribute('width', '15');
+    commentIcon.setAttribute('height', '15');
+    commentIcon.setAttribute('fill', 'none');
+    commentIcon.setAttribute('stroke', 'currentColor');
+    commentIcon.setAttribute('stroke-width', '1.75');
+    commentIcon.setAttribute('style', 'vertical-align: middle');
+    commentIcon.setAttribute('aria-hidden', 'true');
+    const commentPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    commentPath.setAttribute('d', 'M21 11.5a8.5 8.5 0 0 1-12.5 7.5L3 21l1.8-5.2A8.5 8.5 0 1 1 21 11.5Z');
+    commentIcon.append(commentPath);
+    comments.append(commentIcon, document.createTextNode(`${post.comments.length} comments`));
     counts.append(likes, comments);
     footer.append(counts);
     article.append(footer);
@@ -1702,14 +1730,14 @@ document.addEventListener('DOMContentLoaded', () => {
   elements.postList.addEventListener('click', (event) => {
     const card = event.target.closest('.profile-post');
     if (card) {
-      openPost(card.dataset.postId);
+      window.location.assign(`community.html?post=${encodeURIComponent(card.dataset.postId)}`);
     }
   });
   elements.postList.addEventListener('keydown', (event) => {
     const card = event.target.closest('.profile-post');
     if (card && event.target === card && (event.key === 'Enter' || event.key === ' ')) {
       event.preventDefault();
-      openPost(card.dataset.postId);
+      window.location.assign(`community.html?post=${encodeURIComponent(card.dataset.postId)}`);
     }
   });
 

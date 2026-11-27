@@ -2227,14 +2227,18 @@ button {
   gap: 12px;
 }
 
-.profile-posts__pin {
-  width: 38px;
-  height: 38px;
-  fill: #f7d8dc;
-  stroke: #b75d68;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  stroke-width: 2.4;
+.profile-posts__header--posts {
+  position: relative;
+  display: flex;
+  justify-content: center;
+}
+
+.profile-posts__header--posts a {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  transform: translateY(-50%);
+  white-space: nowrap;
 }
 
 .profile-posts__header h2 {
@@ -2264,15 +2268,16 @@ button {
 }
 
 .profile-post {
-  padding: 20px 22px 18px;
-  border-radius: 20px;
-  background: #c8d389;
+  padding: 18px 20px 16px;
+  border: 1px solid #c8c29e;
+  border-radius: 16px;
+  background: #faf8f2;
   cursor: pointer;
-  transition: filter 140ms ease, transform 140ms ease;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
 .profile-post--public {
-  cursor: default;
+  cursor: pointer;
 }
 
 .profile-post--public > p {
@@ -2290,8 +2295,8 @@ button {
 }
 
 .profile-post:hover {
-  filter: brightness(0.985);
-  transform: translateY(-1px);
+  transform: translateY(-2px);
+  box-shadow: 0 7px 18px rgb(65 59 39 / 10%);
 }
 
 .profile-post:focus-visible {
@@ -2341,7 +2346,7 @@ button {
 }
 
 .profile-post__counts {
-  gap: 18px;
+  gap: 16px;
 }
 
 .profile-post__counts > span {
@@ -2351,13 +2356,31 @@ button {
 }
 
 .profile-post__counts svg {
-  width: 19px;
-  height: 19px;
+  width: 15px;
+  height: 15px;
+  flex: 0 0 15px;
   fill: none;
   stroke: currentColor;
   stroke-linecap: round;
   stroke-linejoin: round;
-  stroke-width: 1.35;
+  stroke-width: 1.75;
+  vertical-align: middle;
+}
+
+.profile-post--public .community-post__image-frame {
+  height: 240px;
+  max-height: 240px;
+  margin: 0;
+  overflow: hidden;
+  border-radius: 12px;
+}
+
+.profile-post--public .community-post__image-frame img {
+  width: 100%;
+  height: 100%;
+  max-height: 240px;
+  border-radius: 12px;
+  object-fit: cover;
 }
 
 .profile-post__comment {
@@ -3064,14 +3087,12 @@ button {
     margin-bottom: 4px;
   }
 
-  .profile-posts__pin {
-    width: 32px;
-    height: 32px;
-  }
-
   .profile-post {
     padding: 16px 15px;
-    border-radius: 16px;
+  }
+
+  .profile-posts__header--posts a {
+    font-size: 11px;
   }
 
   .profile-post__title-row h3 {
@@ -5364,6 +5385,12 @@ button {
   animation: community-pop 280ms ease-out both;
 }
 
+.community-post.is-deep-linked {
+  outline: 3px solid #d6b87b;
+  outline-offset: 4px;
+  box-shadow: 0 8px 22px rgb(107 102 56 / 18%);
+}
+
 @keyframes community-pop {
   from { opacity: 0.4; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
@@ -5596,8 +5623,15 @@ button {
 
 .community-post__actions .community-action:last-child {
   min-width: 108px;
-  background: #d5e4df;
-  color: #39483f;
+  border: 1px solid #c8c29e;
+  background: #f4f1e6;
+  color: #4a4728;
+}
+
+.community-post__actions .community-action:last-child:hover {
+  border-color: #c8c29e;
+  background: #e6e4c6;
+  color: #4a4728;
 }
 
 .community-comments {
@@ -7064,6 +7098,10 @@ button {
   margin: 0;
   color: var(--marketplace-olive);
   font-size: 13px;
+}
+
+.marketplace-form-message:empty {
+  display: none;
 }
 
 .marketplace-auth-prompt {

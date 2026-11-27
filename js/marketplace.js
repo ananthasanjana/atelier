@@ -95,9 +95,7 @@
       remoteListings = (data || [])
         .map(window.normalizeAtelierMarketplaceListing)
         .filter((item) => item.id);
-      status.textContent = remoteListings.length
-        ? ''
-        : 'No live listings yet — showing sample finds while the marketplace grows.';
+      status.textContent = '';
     } catch (error) {
       console.error('Unable to load marketplace listings from Supabase.', error);
       remoteListings = [];

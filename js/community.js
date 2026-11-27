@@ -71,6 +71,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let memberSearchRequest = 0;
   let supabaseClient = null;
   let currentUserId = profile ? String(profile.id || '') : '';
+  let deepLinkHighlightTimer = 0;
   const profileIdsByHandle = new Map();
   const authorProfilesById = new Map();
   const authorProfilesByHandle = new Map();
@@ -84,13 +85,16 @@ document.addEventListener('DOMContentLoaded', () => {
   let isLoggedIn = Boolean(profile);
   const storedPosts = readJson(getKey('posts'), []);
   const storedLikes = readJson(getKey('likes'), []);
-  const storedSaved = readJson(getKey('saved'), []);
+  const savedStorageKey = profile && profile.id
+    ? `atelier_saved_posts_${profile.id}`
+    : getKey('saved');
+  const storedSaved = readJson(savedStorageKey, []);
   const storedDeleted = readJson(getKey('deleted'), []);
   const storedFollowing = readJson(getKey('following'), isLoggedIn ? ['@diadesigns', '@rohanmakes'] : []);
   const localPosts = Array.isArray(storedPosts) ? storedPosts : [];
   const localComments = readJson(getKey('comments'), {});
   const likedIds = new Set(Array.isArray(storedLikes) ? storedLikes : []);
-  const savedIds = new Set(Array.isArray(storedSaved) ? storedSaved : []);
+  const savedIds = new Set(Array.isArray(storedSaved) ? storedSaved.map(String) : []);
   const deletedIds = new Set(Array.isArray(storedDeleted) ? storedDeleted.map(String) : []);
   const following = new Set(Array.isArray(storedFollowing) ? storedFollowing.map(normalizeHandle) : []);
   const deletingIds = new Set();
@@ -489,6 +493,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const article = document.createElement('article');
     article.className = 'community-post';
     article.dataset.postId = post.id;
+    article.id = `post-${post.id}`;
 
     const head = document.createElement('header');
     head.className = 'community-post__head';
@@ -512,7 +517,8 @@ document.addEventListener('DOMContentLoaded', () => {
     authorBlock.append(authorName, handle);
     const timestamp = document.createElement('time');
     timestamp.textContent = post.timestamp || 'Just now';
-    const saveButton = makeActionButton('save', savedIds.has(post.id) ? 'Saved' : 'Save', 'bookmark', savedIds.has(post.id));
+    const isSaved = savedIds.has(String(post.id));
+    const saveButton = makeActionButton('save', isSaved ? 'Saved' : 'Save', 'bookmark', isSaved);
     saveButton.classList.add('community-post__save');
     head.append(authorBlock, timestamp, saveButton);
     if (isLoggedIn && normalizeHandle(post.handle) === ownHandle) {
@@ -924,7 +930,7 @@ document.addEventListener('DOMContentLoaded', () => {
       new Date(second.createdAt || 0).getTime() - new Date(first.createdAt || 0).getTime()
     ));
     const mergedPosts = [];
-    const demoPosts = activeTab === 'home'
+    const demoPosts = activeTab === 'home' || activeTab === 'saved'
       ? DEMO_POSTS.map((post) => ({ ...post, isDemo: true }))
       : [];
     [...livePosts, ...localPosts, ...demoPosts].forEach((post) => {
@@ -941,7 +947,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return !post.forumTopic && following.has(normalizeHandle(post.handle));
     }
     if (activeTab === 'saved') {
-      return savedIds.has(post.id);
+      return savedIds.has(String(post.id));
     }
     if (activeTab === 'my-posts') {
       return !post.isDemo
@@ -1018,6 +1024,43 @@ document.addEventListener('DOMContentLoaded', () => {
     visible.forEach((post) => elements.feed.append(createPostCard(post)));
   }
 
+  function showDeepLinkedPost() {
+    const queryPostId = new URLSearchParams(window.location.search).get('post');
+    const hashPostId = window.location.hash.startsWith('#post-')
+      ? window.location.hash.slice('#post-'.length)
+      : '';
+    const postId = queryPostId || hashPostId;
+    if (!postId) return;
+
+    activeTab = 'home';
+    activeFilter = 'recent';
+    window.atelierCommunityState.activeTab = activeTab;
+    window.atelierCommunityState.activeFilter = activeFilter;
+    elements.tabs.forEach((tab) => {
+      const selected = tab.dataset.tab === 'home';
+      tab.classList.toggle('is-active', selected);
+      if (selected) tab.setAttribute('aria-current', 'page');
+      else tab.removeAttribute('aria-current');
+    });
+    elements.filters.forEach((filter) => {
+      const selected = filter.dataset.filter === 'recent';
+      filter.classList.toggle('is-active', selected);
+      filter.setAttribute('aria-pressed', String(selected));
+    });
+    renderFeed();
+
+    const postCard = document.getElementById(`post-${postId}`);
+    if (!postCard) return;
+    window.requestAnimationFrame(() => {
+      postCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      postCard.classList.add('is-deep-linked');
+      window.clearTimeout(deepLinkHighlightTimer);
+      deepLinkHighlightTimer = window.setTimeout(() => {
+        postCard.classList.remove('is-deep-linked');
+      }, 2600);
+    });
+  }
+
   function getFallbackAuthorRows() {
     const posts = [...localPosts, ...DEMO_POSTS];
     return posts.flatMap((post) => [
@@ -1073,11 +1116,13 @@ document.addEventListener('DOMContentLoaded', () => {
       await loadRemoteComments();
       subscribeToComments();
       renderFeed();
+      showDeepLinkedPost();
     } catch (error) {
       console.error('Community posts could not be loaded from Supabase; showing seeded posts.', error);
       window.atelierCommunityRemotePosts = [];
       await loadAuthorProfiles(getFallbackAuthorRows());
       renderFeed();
+      showDeepLinkedPost();
     }
   }
 
@@ -1398,6 +1443,45 @@ document.addEventListener('DOMContentLoaded', () => {
     return persist(key, [...set]);
   }
 
+  function persistSavedPosts() {
+    const userId = currentUserId || (profile && String(profile.id || ''));
+    if (!userId) return false;
+    try {
+      window.localStorage.setItem(`atelier_saved_posts_${userId}`, JSON.stringify([...savedIds]));
+      return true;
+    } catch (error) {
+      console.error('Unable to save the Atelier saved-post list.', error);
+      showToast('Could not save your saved posts in this browser.', 'error');
+      return false;
+    }
+  }
+
+  async function loadSavedPosts() {
+    if (!currentUserId) return;
+    const userSavedPosts = readJson(`atelier_saved_posts_${currentUserId}`, []);
+    savedIds.clear();
+    (Array.isArray(userSavedPosts) ? userSavedPosts : []).forEach((postId) => savedIds.add(String(postId)));
+    if (!supabaseClient) {
+      renderFeed();
+      return;
+    }
+    try {
+      const { data, error } = await supabaseClient
+        .from('saved_posts')
+        .select('post_id')
+        .eq('user_id', currentUserId);
+      if (error) throw error;
+      (data || []).forEach((row) => {
+        if (row.post_id != null) savedIds.add(String(row.post_id));
+      });
+      persistSavedPosts();
+    } catch (error) {
+      console.error('Saved posts could not be loaded from Supabase.', error);
+      showToast(`Saved posts could not be synced: ${error.message || 'Please try again.'}`, 'error');
+    }
+    renderFeed();
+  }
+
   function toggleLike(postId, button) {
     if (!requireLogin()) {
       return;
@@ -1419,18 +1503,53 @@ document.addEventListener('DOMContentLoaded', () => {
     button.lastElementChild.textContent = active ? 'Liked' : 'Like';
   }
 
-  function toggleSave(postId) {
+  async function toggleSave(postId) {
     if (!requireLogin()) {
       return;
     }
-    if (savedIds.has(postId)) {
-      savedIds.delete(postId);
+    const normalizedPostId = String(postId);
+    const wasSaved = savedIds.has(normalizedPostId);
+    if (wasSaved) {
+      savedIds.delete(normalizedPostId);
     } else {
-      savedIds.add(postId);
+      savedIds.add(normalizedPostId);
     }
-    persistSet('saved', savedIds);
+    if (!persistSavedPosts()) {
+      if (wasSaved) savedIds.add(normalizedPostId);
+      else savedIds.delete(normalizedPostId);
+      return;
+    }
     renderFeed();
-    showToast(savedIds.has(postId) ? 'Saved to your collection.' : 'Removed from Saved Posts.');
+    const isSaved = savedIds.has(normalizedPostId);
+    showToast(isSaved ? 'Saved to your collection.' : 'Removed from Saved Posts.');
+    const isLivePost = (window.atelierCommunityRemotePosts || [])
+      .some((post) => String(post.id) === normalizedPostId);
+    if (!supabaseClient || !currentUserId) return;
+
+    try {
+      const result = isSaved
+        ? await supabaseClient.from('saved_posts').upsert(
+          { user_id: currentUserId, post_id: normalizedPostId },
+          { onConflict: 'user_id,post_id' }
+        )
+        : await supabaseClient.from('saved_posts').delete()
+          .eq('user_id', currentUserId)
+          .eq('post_id', normalizedPostId);
+      if (result.error) throw result.error;
+    } catch (error) {
+      if (isSaved && !isLivePost) {
+        persistSavedPosts();
+        console.error('Non-live saved post could not be synced with Supabase.', error);
+        showToast(`Saved on this device, but could not be synced: ${error.message || 'Please try again.'}`, 'error');
+        return;
+      }
+      if (isSaved) savedIds.delete(normalizedPostId);
+      else savedIds.add(normalizedPostId);
+      persistSavedPosts();
+      renderFeed();
+      console.error('Saved post could not be synced with Supabase.', error);
+      showToast(`This save could not be synced: ${error.message || 'Please try again.'}`, 'error');
+    }
   }
 
   async function loadCommunityFollowData() {
@@ -1441,6 +1560,7 @@ document.addEventListener('DOMContentLoaded', () => {
       currentUserId = sessionData.session && sessionData.session.user
         ? String(sessionData.session.user.id || '')
         : '';
+      await loadSavedPosts();
 
       const suggestionHandles = [...new Set(SUGGESTIONS.map((item) => normalizeHandle(item.handle).slice(1)))];
       if (suggestionHandles.length) {
@@ -1862,6 +1982,7 @@ document.addEventListener('DOMContentLoaded', () => {
   followDataPromise = loadCommunityFollowData();
   renderSuggestions();
   renderFeed();
+  showDeepLinkedPost();
   refreshCurrentUserProfileAvatar();
   loadRemotePosts();
 });
